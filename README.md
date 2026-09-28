@@ -1,5 +1,7 @@
 # Elm compiler in Rust
 
+<p align="center"><img src="https://github.com/user-attachments/assets/a3bfcfe1-bf13-4526-b2e0-1d9f987c0d5b" width="640" alt="Ferris (Rust) chases the Haskell logo away and the Elm tangram reassembles"></p>
+
 An independent, **unofficial** reimplementation of the [Elm](https://elm-lang.org)
 0.19.1 compiler, written in Rust. It parses, type-checks and generates
 JavaScript by itself — it never calls the official Haskell compiler.

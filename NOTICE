@@ -1,0 +1,25 @@
+Elm compiler in Rust — third-party notices
+==========================================
+
+This project is licensed under the BSD 3-Clause License (see LICENSE),
+Copyright (c) 2026, Spottt.
+
+It is an independent reimplementation of the Elm 0.19.1 compiler. It is not
+affiliated with or endorsed by the Elm project or its authors. Parts of it are
+ported from, or reproduce behaviour, runtime code or test fixtures of, the
+following works, whose licenses are distributed alongside this one:
+
+* Elm compiler and core runtime — https://github.com/elm/compiler
+  Copyright 2012-present Evan Czaplicki. BSD 3-Clause. See LICENSE-ELM.
+  Reference: tag 0.19.1, commit c9aefb6230f5e0bda03205ab0499f6e4af924495.
+  Historical tests (tests/upstream/elm-0.18.0) keep their original LICENSE.
+
+* GHC base library — https://www.haskell.org/ghc/
+  (c) The University of Glasgow and others. BSD-style. See LICENSE-GHC.
+
+* language-glsl — https://hackage.haskell.org/package/language-glsl
+  Copyright (c) Vo Minh Thu, 2010. BSD 3-Clause. See LICENSE-GLSL.
+  Test fixtures (tests/upstream/language-glsl-0.3.0) keep their original LICENSE.
+
+Elm packages downloaded at build time from package.elm-lang.org are not part of
+this distribution and remain under their own licenses.

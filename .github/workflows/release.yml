@@ -1,0 +1,108 @@
+name: CI and release
+# Every push and pull request builds and tests the four release binaries and
+# assembles the npm tarball. Pushing a tag `v<version>` additionally publishes
+# that exact tarball to npm (behind the protected `npm-publish` environment)
+# and attaches it, with the raw binaries, to a GitHub Release.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  binaries:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, package: linux-x64}
+          - {os: ubuntu-22.04, target: aarch64-unknown-linux-gnu, package: linux-arm64}
+          - {os: macos-14, target: x86_64-apple-darwin, package: darwin-x64}
+          - {os: macos-14, target: aarch64-apple-darwin, package: darwin-arm64}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: rustup toolchain install 1.98.1 --profile minimal --component clippy --target ${{ matrix.target }}
+      - if: matrix.package == 'linux-arm64'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+      - run: cargo +1.98.1 test --locked
+      - run: cargo +1.98.1 clippy --locked --all-targets -- -D warnings
+      - run: node --test distribution/*.test.mjs
+      - run: cargo +1.98.1 build --locked --release --target ${{ matrix.target }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+      - run: |
+          mkdir -p artifacts/${{ matrix.package }}
+          cp target/${{ matrix.target }}/release/planexpo-elm artifacts/${{ matrix.package }}/planexpo-elm
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package }}
+          path: artifacts/
+  package:
+    needs: binaries
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - run: node distribution/stage-release.mjs artifacts release
+      - run: chmod +x release/platforms/*/planexpo-elm
+      - run: node release/verify.cjs
+      - run: node release/bin/planexpo-elm.cjs --version
+      - run: npm pack ./release
+      # Smoke test: install the tarball in an empty project and compile an Elm file.
+      - run: |
+          mkdir smoke && cd smoke && npm init -y >/dev/null
+          npm install --no-audit --no-fund ../*.tgz
+          npx planexpo-elm --version
+      - run: |
+          for platform in linux-x64 linux-arm64 darwin-x64 darwin-arm64; do
+            tar -czf "planexpo-elm-${GITHUB_REF_NAME//\//-}-$platform.tar.gz" -C release/platforms/$platform planexpo-elm
+          done
+          sha256sum *.tgz planexpo-elm-*.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: |
+            *.tgz
+            planexpo-elm-*.tar.gz
+            SHA256SUMS
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package
+    runs-on: ubuntu-22.04
+    environment: npm-publish
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # Versions with a pre-release suffix (0.4.0-beta.1) go to the `next` dist-tag.
+      - run: |
+          tag=latest
+          case "$GITHUB_REF_NAME" in *-*) tag=next ;; esac
+          npm publish ./*.tgz --access public --provenance --tag "$tag"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --generate-notes $flags ./*.tgz planexpo-elm-*.tar.gz SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,275 @@
+{
+  "repository": "https://github.com/elm/compiler",
+  "tag": "0.18.0",
+  "commit": "eb97f2a5dd5421c708a91b71442e69d02453cc80",
+  "files": [
+    {
+      "path": "LICENSE",
+      "sha256": "2151df563567204300ea90dfdb85b255e46192087d9b69a710b4df4eaaf84a4b"
+    },
+    {
+      "path": "tests/Test.hs",
+      "sha256": "99f871ac0883686db574bc5148852662fa9c6c8c134479693c8255aa062e9b64"
+    },
+    {
+      "path": "tests/Test/Compiler.hs",
+      "sha256": "6d7edc713375bdf17947b98e22275ef39106774169da6a0440dcd44fff4d7d48"
+    },
+    {
+      "path": "tests/Test/Property.hs",
+      "sha256": "1acfa5c78b0dc21d451e6f63a51945150528d8fc70559924e2df621a1fe721b5"
+    },
+    {
+      "path": "tests/Test/Property/Arbitrary.hs",
+      "sha256": "8a4e90536ddced0d180b4f7d4b164497d208c49f305f30e5e6db4faa123c60ec"
+    },
+    {
+      "path": "tests/test-files/bad/BBTArgs",
+      "sha256": "09230b3dbc35635f04595dc627c267a62174ba6435078ab5083dce4252c999a1"
+    },
+    {
+      "path": "tests/test-files/bad/IncompletePatternMatch.elm",
+      "sha256": "75244b371f79181ca5b2d972b3dd637b647c716955a9f3226ef7f04270729c91"
+    },
+    {
+      "path": "tests/test-files/bad/InfiniteType.elm",
+      "sha256": "320492af45bb3ad3db1503ee5fb2dbbb3ddfc67fa7abb7ad76f573b774637096"
+    },
+    {
+      "path": "tests/test-files/bad/NonElementMain.elm",
+      "sha256": "d31d8ea1454d3466a2aa6832a8d092567a08ebf5467f94ff28a63b2da5e5dca1"
+    },
+    {
+      "path": "tests/test-files/bad/RepeatedArgument.elm",
+      "sha256": "6760577f281c9fd2fc2d221df58eb9c0d318f9ae8869caec206a222270f67a45"
+    },
+    {
+      "path": "tests/test-files/bad/Strings/ExtraClose.elm",
+      "sha256": "bf0c5022445d4481980135cd0574d63066d31a37b3dc7051f43716d4d8fd9e4c"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Cases/CharCase.elm.js",
+      "sha256": "6746caffc8fa6c589db45d71d6232cc50ad332e2eda714ca5b34c3c7dbca7825"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Cases/ListZip.elm.js",
+      "sha256": "70df7647cc8c499e13f0788b294e5ddf60b0152e6a44a010bf678d4893b06f06"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/CodeGenBugs/CommentInterpretedAsInfix.elm.js",
+      "sha256": "c9eb33b22c256276c1ae0fc1c7e3fd832b4b7d516f10d896debfbc0cb13f42aa"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/CodeGenBugs/NestedPatternMatch.elm.js",
+      "sha256": "845e825db4d87c84dcd1c80e7b4e94c820c905099025314013fd228737309cd1"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/CodeGenBugs/Shadowing.elm.js",
+      "sha256": "9e9de79705a18fc970d592884bc421a874ec8847ccf51e7335094d6a46f66e6f"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/CodeGenBugs/Shadowing2.elm.js",
+      "sha256": "38645a4d725584b362d3da9e822bbf5213e9cd4a10fca273fd512d80d4bd3ab7"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/CodeGenBugs/TailRecursion_ListAny.elm.js",
+      "sha256": "f1c6f537b91a9788d1f8adb95286d31f5d075a217b836e5ed32e9e60fcd270a6"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/CodeGenBugs/TailRecursion_NameNormalization.elm.js",
+      "sha256": "50d7d64334e62ebdc5b789557794514a8fbac90ecd5240c8ff833a7a2b652aef"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/CodeGenBugs/TailRecursion_UnsafeLabel.elm.js",
+      "sha256": "50857601e76b2cee1535b43bdd9723b644e08def211dba024b6e9f693eabfcef"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Crash/CrashCase.elm.js",
+      "sha256": "e272917b42adbb1701fcdb91ea158ed2ead90a0fd0a27fe9ddce567a830d1233"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Crash/CrashIf.elm.js",
+      "sha256": "634d86081dfbdeebb5c0c0df46fcad6784ada8f3ffa7fc324bad1b2553acc4b2"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Declarations/NoDefinitions.elm.js",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Lists/EmptyList.elm.js",
+      "sha256": "c6aaa3f378cbab185576d38384d3fa2a84321b611e2186a56f386331ab6906db"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Lists/ListRange.elm.js",
+      "sha256": "6018883191eb93cb9f88cf671ee2b22a8c54371e8fed8b0869712c4abe6c5006"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Lists/NonEmptyList.elm.js",
+      "sha256": "f46aecabf44aadb2be81f8ee8a15a09540a5f8a20be8e2ac5b4fcac4665ce50a"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Records/AliasSubstitution.elm.js",
+      "sha256": "acf8f335d66a2a0151615b9a338c2306d0390f4b1908b7740ffca67265839b2e"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Records/NonHomogeneousRecords.elm.js",
+      "sha256": "dfcdeff907cbdfbb0db87d7163f01a58bd2248012c0ca7cf65c4167e7895fc87"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Soundness/Apply.elm.js",
+      "sha256": "c6bae5125cddf9f4166c6ce7e273947bd26773b7e60db4318b1e3dea5094ebd2"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Soundness/ApplyAnnotated.elm.js",
+      "sha256": "c6bae5125cddf9f4166c6ce7e273947bd26773b7e60db4318b1e3dea5094ebd2"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Soundness/Id.elm.js",
+      "sha256": "0294ae71256c09e1c1d9fa77206935a9cf61c51533031a7c592eabde9d7ae1ef"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Soundness/IdAnnotated.elm.js",
+      "sha256": "0294ae71256c09e1c1d9fa77206935a9cf61c51533031a7c592eabde9d7ae1ef"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Soundness/SpecificAnnotationInt.elm.js",
+      "sha256": "14f33dc3e2cf8e0915bb8467bb393deaced1c164cbf2a6b3430c3903cf98a5fb"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Soundness/SpecificAnnotationNumber.elm.js",
+      "sha256": "14f33dc3e2cf8e0915bb8467bb393deaced1c164cbf2a6b3430c3903cf98a5fb"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Soundness/TrickyId.elm.js",
+      "sha256": "b8df7b6b4600c7db118e8cc1b0af7b55076d4cbddcf68ddd361fcc7b6c812992"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Soundness/TrickyIdAnnotated.elm.js",
+      "sha256": "b8df7b6b4600c7db118e8cc1b0af7b55076d4cbddcf68ddd361fcc7b6c812992"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Strings/Multiline.elm.js",
+      "sha256": "9c41cbd938ea00906a45ca7cb49752d4ac400bb19c75552ae907c78d71b5af39"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Strings/MultilineNormal.elm.js",
+      "sha256": "9c41cbd938ea00906a45ca7cb49752d4ac400bb19c75552ae907c78d71b5af39"
+    },
+    {
+      "path": "tests/test-files/good-expected-js/Strings/QuotesAndComments.elm.js",
+      "sha256": "071cfdaca3b09a39147dc27ef91dbaaafd7a428ed04379765decbef593049ca1"
+    },
+    {
+      "path": "tests/test-files/good/Cases/CharCase.elm",
+      "sha256": "a306bdf538fd7ced25520ad80f72b71a60a94bc082e4113b73cbd03eaa53805f"
+    },
+    {
+      "path": "tests/test-files/good/Cases/ListZip.elm",
+      "sha256": "36ee3c746f10a4b593b78137135ce42857362cbfa5f9c0c7535115bfe1d0f2a6"
+    },
+    {
+      "path": "tests/test-files/good/CodeGenBugs/CommentInterpretedAsInfix.elm",
+      "sha256": "2606f2a654c46f7f72c75b827fc0cb94177f29679d0e15f1c43228822fe2f311"
+    },
+    {
+      "path": "tests/test-files/good/CodeGenBugs/NestedPatternMatch.elm",
+      "sha256": "2e5a0683e222d6ef32f8788c90311f0ad4020db66ea88fff2fa3acc7e99aef6b"
+    },
+    {
+      "path": "tests/test-files/good/CodeGenBugs/Shadowing.elm",
+      "sha256": "f79a039d108846a65a8c83e1dbefe83b0ca5e16a32bf17f909a6bde43de31003"
+    },
+    {
+      "path": "tests/test-files/good/CodeGenBugs/Shadowing2.elm",
+      "sha256": "f123d294d02ebd3c5fd171c622aca00ceb6ca98c0d5405c17635d4477b904e26"
+    },
+    {
+      "path": "tests/test-files/good/CodeGenBugs/TailRecursion_ListAny.elm",
+      "sha256": "ae6fbb6db313b824a8bfedeed5f30c9058f41d6fbd8422765f246137bba9da57"
+    },
+    {
+      "path": "tests/test-files/good/CodeGenBugs/TailRecursion_NameNormalization.elm",
+      "sha256": "f4896a8a34be607dd533f3419bef6897febf1f4daa7e6475a611c0cc168f831e"
+    },
+    {
+      "path": "tests/test-files/good/CodeGenBugs/TailRecursion_UnsafeLabel.elm",
+      "sha256": "de8aac24bb74fc23a57403da5cd768edf975669370df4fdc47a238a92218a81d"
+    },
+    {
+      "path": "tests/test-files/good/Crash/CrashCase.elm",
+      "sha256": "66c5812717957f1cbd085c421566a8b39ffeb00f247d1c3ab19ce7e867882659"
+    },
+    {
+      "path": "tests/test-files/good/Crash/CrashIf.elm",
+      "sha256": "242158424927b2cee370f4b006ba9c9967b7cc2c33ac4b8f0fa5e7546ab034e9"
+    },
+    {
+      "path": "tests/test-files/good/Declarations/NoDefinitions.elm",
+      "sha256": "6c64a25a7b31eada0374825dee926c496b90beb6b82285728d05cbb873c9cf5d"
+    },
+    {
+      "path": "tests/test-files/good/Lists/EmptyList.elm",
+      "sha256": "02b9fabbe023d765d9c13a1a0003f6c103d1e32ab757138ae2d475cbcf004f78"
+    },
+    {
+      "path": "tests/test-files/good/Lists/ListRange.elm",
+      "sha256": "d11f84aa70b0739044add406547cfe3b871e07ab910f12ca22e1749df1df0b34"
+    },
+    {
+      "path": "tests/test-files/good/Lists/NonEmptyList.elm",
+      "sha256": "0958486713cd2eee1c30ba39ecf9cb7da090b84f574d038aa2207c47b24e69ef"
+    },
+    {
+      "path": "tests/test-files/good/Records/AliasSubstitution.elm",
+      "sha256": "76136df21d1e604f9ba9cc1ac5cb65920bf702b9a2b520b3ce45e539f3a63c80"
+    },
+    {
+      "path": "tests/test-files/good/Records/NonHomogeneousRecords.elm",
+      "sha256": "dea621b23e95c48590fbe8cddc0b33002f3716f63186af1de258955fdcb4818e"
+    },
+    {
+      "path": "tests/test-files/good/Soundness/Apply.elm",
+      "sha256": "57a8094144a8a1eab79fe64e239ca52c55b5de2b506d64370634e8a2d70e5467"
+    },
+    {
+      "path": "tests/test-files/good/Soundness/ApplyAnnotated.elm",
+      "sha256": "069f4e8a53a7c3cab08f2beeaac7262e67c8d1c61eba270863c9b3af1f460f21"
+    },
+    {
+      "path": "tests/test-files/good/Soundness/Id.elm",
+      "sha256": "34380f819c8aed9cd6f98e27035d6825ba8bcd7c7e6b6f31d59d62467b12dca6"
+    },
+    {
+      "path": "tests/test-files/good/Soundness/IdAnnotated.elm",
+      "sha256": "2a13cee99c39479aad1a71b995745955741f0ebc6b2d90de67df9876fc383678"
+    },
+    {
+      "path": "tests/test-files/good/Soundness/SpecificAnnotationInt.elm",
+      "sha256": "8987d7217f404d9e60563c7125e4a436c9af9482fe97ebcadfad769528c0a0d7"
+    },
+    {
+      "path": "tests/test-files/good/Soundness/SpecificAnnotationNumber.elm",
+      "sha256": "00596c2ead5dabd5c2bd8a5e341000438f77c9657ecef5c9e744f0b2fcc58510"
+    },
+    {
+      "path": "tests/test-files/good/Soundness/TrickyId.elm",
+      "sha256": "2f4f372b6f1039b689e319656844df3b13e4849edd6f5abf07db805345b68c1c"
+    },
+    {
+      "path": "tests/test-files/good/Soundness/TrickyIdAnnotated.elm",
+      "sha256": "895788c7dae942e84cc340740fe78e3e668411ec60f95a91e379bc3b147ef111"
+    },
+    {
+      "path": "tests/test-files/good/Strings/Multiline.elm",
+      "sha256": "df215a5dfbc5c092bd2360fc85ff2c7aa1c61646607501c6e1f31c81d48d251d"
+    },
+    {
+      "path": "tests/test-files/good/Strings/MultilineNormal.elm",
+      "sha256": "78bcafceda6389af985da9ea60d8b45e7d173725959656deb0ebd71f40dc1345"
+    },
+    {
+      "path": "tests/test-files/good/Strings/QuotesAndComments.elm",
+      "sha256": "741a34337bea408d02cb5a17d1f90edbb5068620da96dd91fe2873e4e2a81044"
+    }
+  ]
+}

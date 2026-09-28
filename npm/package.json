@@ -1,0 +1,47 @@
+{
+  "name": "@spottt/elm-compiler",
+  "version": "0.1.0",
+  "description": "Fast Elm 0.19.1 compiler written in Rust (unofficial), with prebuilt binaries",
+  "license": "BSD-3-Clause",
+  "author": "Spottt",
+  "homepage": "https://github.com/Spottt/elm-compiler#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Spottt/elm-compiler.git",
+    "directory": "npm"
+  },
+  "bugs": "https://github.com/Spottt/elm-compiler/issues",
+  "keywords": [
+    "elm",
+    "compiler",
+    "rust",
+    "elm-lang",
+    "elm-make"
+  ],
+  "bin": {
+    "planexpo-elm": "bin/planexpo-elm.cjs"
+  },
+  "main": "resolve.cjs",
+  "files": [
+    "bin/",
+    "resolve.cjs",
+    "platforms/",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "LICENSE-ELM",
+    "LICENSE-GHC",
+    "LICENSE-GLSL",
+    "checksums.json",
+    "verify.cjs"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepublishOnly": "node verify.cjs"
+  }
+}

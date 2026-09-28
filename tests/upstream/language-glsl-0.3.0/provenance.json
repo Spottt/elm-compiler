@@ -1,0 +1,9 @@
+{
+  "source": "https://hackage-content.haskell.org/package/language-glsl-0.3.0/language-glsl-0.3.0.tar.gz",
+  "files": {
+    "tests/Tests.hs": "d083343563059a4e5daf5e65c29d849990e8700b44d163b95e9df9d0ee8eac4d",
+    "Language/GLSL/Parser.hs": "607137cf4df15ed2fc23a988ca5e46bb3f701247e536c121c676497df5e5bb54",
+    "glsl/sample-01.glsl": "b5eeff183de4050c37b09dfa35c31b12bb048bbf8433ce6f87c37735476865e1",
+    "LICENSE": "c606d032578090d97fe085d1157662583773d89edb5fb38359cbe82237cf9cde"
+  }
+}

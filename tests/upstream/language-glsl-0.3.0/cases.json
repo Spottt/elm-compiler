@@ -1,0 +1,1310 @@
+[
+  {
+    "group": "ExpressionsTrue",
+    "source": "a",
+    "shader": "float value = (a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "avoid",
+    "shader": "float value = (avoid);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "filters",
+    "shader": "float value = (filters);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "0",
+    "shader": "float value = (0);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "1",
+    "shader": "float value = (1);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": ".1",
+    "shader": "float value = (.1);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "0x01",
+    "shader": "float value = (0x01);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "0xF",
+    "shader": "float value = (0xF);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "07",
+    "shader": "float value = (07);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a++",
+    "shader": "float value = (a++);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a--",
+    "shader": "float value = (a--);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a++--",
+    "shader": "float value = (a++--);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a--++",
+    "shader": "float value = (a--++);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a++++",
+    "shader": "float value = (a++++);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a----",
+    "shader": "float value = (a----);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "++a",
+    "shader": "float value = (++a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "--a",
+    "shader": "float value = (--a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "++--a",
+    "shader": "float value = (++--a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "--++a",
+    "shader": "float value = (--++a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "++++a",
+    "shader": "float value = (++++a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "----a",
+    "shader": "float value = (----a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a ++",
+    "shader": "float value = (a ++);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "+a",
+    "shader": "float value = (+a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "+ a",
+    "shader": "float value = (+ a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a + b",
+    "shader": "float value = (a + b);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a + b++",
+    "shader": "float value = (a + b++);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a + ++b",
+    "shader": "float value = (a + ++b);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a + + b",
+    "shader": "float value = (a + + b);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a ++ +b",
+    "shader": "float value = (a ++ +b);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a()",
+    "shader": "float value = (a());",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "float()",
+    "shader": "float value = (float());",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a ()",
+    "shader": "float value = (a ());",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a( )",
+    "shader": "float value = (a( ));",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a ( )",
+    "shader": "float value = (a ( ));",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a.a",
+    "shader": "float value = (a.a);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a.a()",
+    "shader": "float value = (a.a());",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a.length()",
+    "shader": "float value = (a.length());",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a[1]",
+    "shader": "float value = (a[1]);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a[1].x",
+    "shader": "float value = (a[1].x);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a[1].x()",
+    "shader": "float value = (a[1].x());",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a().b",
+    "shader": "float value = (a().b);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a().b[1]",
+    "shader": "float value = (a().b[1]);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a().b()",
+    "shader": "float value = (a().b());",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsTrue",
+    "source": "a.b.c",
+    "shader": "float value = (a.b.c);",
+    "accepted": true
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "void",
+    "shader": "float value = (void);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "filter",
+    "shader": "float value = (filter);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": ".A",
+    "shader": "float value = (.A);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "08",
+    "shader": "float value = (08);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "0A",
+    "shader": "float value = (0A);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "+",
+    "shader": "float value = (+);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "++",
+    "shader": "float value = (++);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "a+",
+    "shader": "float value = (a+);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "a +",
+    "shader": "float value = (a +);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "a . a",
+    "shader": "float value = (a . a);",
+    "accepted": false
+  },
+  {
+    "group": "ExpressionsFalse",
+    "source": "a[]",
+    "shader": "float value = (a[]);",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a;",
+    "shader": "int a;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a, b, c;",
+    "shader": "int a, b, c;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "precision highp float;",
+    "shader": "precision highp float;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 1;",
+    "shader": "int a = 1;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "struct a { int b; };",
+    "shader": "struct a { int b; };",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "struct a { int b; float c; };",
+    "shader": "struct a { int b; float c; };",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (origin_upper_left) in;",
+    "shader": "layout (origin_upper_left) in;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (origin_upper_left) in vec4 gl_FragCoord;",
+    "shader": "layout (origin_upper_left) in vec4 gl_FragCoord;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;",
+    "shader": "layout (origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "bool success;",
+    "shader": "bool success;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "bool done = false;",
+    "shader": "bool done = false;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 123;",
+    "shader": "int a = 123;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 123u;",
+    "shader": "int a = 123u;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 123U;",
+    "shader": "int a = 123U;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0123;",
+    "shader": "int a = 0123;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0123u;",
+    "shader": "int a = 0123u;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0123U;",
+    "shader": "int a = 0123U;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0x123;",
+    "shader": "int a = 0x123;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0x123u;",
+    "shader": "int a = 0x123u;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0x123U;",
+    "shader": "int a = 0x123U;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0x12ABu;",
+    "shader": "int a = 0x12ABu;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0x12ABU;",
+    "shader": "int a = 0x12ABU;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0X123;",
+    "shader": "int a = 0X123;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0X123u;",
+    "shader": "int a = 0X123u;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0X123U;",
+    "shader": "int a = 0X123U;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0X12ABu;",
+    "shader": "int a = 0X12ABu;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a = 0X12ABU;",
+    "shader": "int a = 0X12ABU;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1.0;",
+    "shader": "float a = 1.0;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1.;",
+    "shader": "float a = 1.;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = .0;",
+    "shader": "float a = .0;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1e1;",
+    "shader": "float a = 1e1;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1.0e1;",
+    "shader": "float a = 1.0e1;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1.e1;",
+    "shader": "float a = 1.e1;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1.0e-1;",
+    "shader": "float a = 1.0e-1;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1.0e+1;",
+    "shader": "float a = 1.0e+1;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1.0e+1f;",
+    "shader": "float a = 1.0e+1f;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1.0e+1F;",
+    "shader": "float a = 1.0e+1F;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "vec2 texcoord1, texcoord2;",
+    "shader": "vec2 texcoord1, texcoord2;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "mat3x2 m;",
+    "shader": "mat3x2 m;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "struct light { float intensity; vec3 position; } lightVar;",
+    "shader": "struct light { float intensity; vec3 position; } lightVar;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "const struct light { float intensity; vec3 position; } lightVar;",
+    "shader": "const struct light { float intensity; vec3 position; } lightVar;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float frequencies[3];",
+    "shader": "float frequencies[3];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "uniform vec4 lightPosition[4];",
+    "shader": "uniform vec4 lightPosition[4];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "light lights[];",
+    "shader": "light lights[];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "const int numLights = 2;",
+    "shader": "const int numLights = 2;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "light lights[numLights];",
+    "shader": "light lights[numLights];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float[5] a;",
+    "shader": "float[5] a;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a[5];",
+    "shader": "float a[5];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a[5] = float[](3.4, 4.2, 5.0, 5.2, 1.1);",
+    "shader": "float a[5] = float[](3.4, 4.2, 5.0, 5.2, 1.1);",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a[5] = float[5](3.4, 4.2, 5.0, 5.2, 1.1);",
+    "shader": "float a[5] = float[5](3.4, 4.2, 5.0, 5.2, 1.1);",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "const int a;",
+    "shader": "const int a;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "in int a;",
+    "shader": "in int a;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "centroid in int a;",
+    "shader": "centroid in int a;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "smooth in int a;",
+    "shader": "smooth in int a;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "bool success;",
+    "shader": "bool success;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "bool done = false;",
+    "shader": "bool done = false;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int i;",
+    "shader": "int i;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int i, j = 42;",
+    "shader": "int i, j = 42;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int j = 1;",
+    "shader": "int j = 1;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "uint k = 3u;",
+    "shader": "uint k = 3u;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float x = 1.0;",
+    "shader": "float x = 1.0;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float a = 1.5, b;",
+    "shader": "float a = 1.5, b;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "vec2 texcoord1, texcoord2;",
+    "shader": "vec2 texcoord1, texcoord2;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "vec3 position;",
+    "shader": "vec3 position;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "vec4 myRGBA;",
+    "shader": "vec4 myRGBA;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "ivec2 textureLookup;",
+    "shader": "ivec2 textureLookup;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "bvec3 less;",
+    "shader": "bvec3 less;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "mat2 mat2D;",
+    "shader": "mat2 mat2D;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "mat3 optMatrix;",
+    "shader": "mat3 optMatrix;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "mat4 view;",
+    "shader": "mat4 view;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "mat3x2 m;",
+    "shader": "mat3x2 m;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "struct light{float intensity;vec3 position;} lightVar;",
+    "shader": "struct light{float intensity;vec3 position;} lightVar;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "light lightVar3;",
+    "shader": "light lightVar3;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "float frequencies[3];",
+    "shader": "float frequencies[3];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "uniform vec4 lightPosition[4];",
+    "shader": "uniform vec4 lightPosition[4];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "light lights[];",
+    "shader": "light lights[];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "const int numLights = 2;",
+    "shader": "const int numLights = 2;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "light lights[numLights];",
+    "shader": "light lights[numLights];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int a[5];",
+    "shader": "int a[5];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "const float coef = 2.75;",
+    "shader": "const float coef = 2.75;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "const vec3 zAxis = vec3 (0.0, 0.0, 1.0);",
+    "shader": "const vec3 zAxis = vec3 (0.0, 0.0, 1.0);",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "in vec4 position;",
+    "shader": "in vec4 position;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "in vec3 normal;",
+    "shader": "in vec3 normal;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "in vec2 texCoord[4];",
+    "shader": "in vec2 texCoord[4];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "in float foo[];",
+    "shader": "in float foo[];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "centroid out vec2 TexCoord;",
+    "shader": "centroid out vec2 TexCoord;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "invariant centroid out vec4 Color;",
+    "shader": "invariant centroid out vec4 Color;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "invariant flat centroid out vec4 Color;",
+    "shader": "invariant flat centroid out vec4 Color;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "noperspective out float temperature;",
+    "shader": "noperspective out float temperature;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "flat out vec3 myColor;",
+    "shader": "flat out vec3 myColor;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "noperspective centroid out vec2 myTexCoord;",
+    "shader": "noperspective centroid out vec2 myTexCoord;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "out vec4 FragmentColor;",
+    "shader": "out vec4 FragmentColor;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "out uint Luminosity;",
+    "shader": "out uint Luminosity;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "uniform Transform{  mat4 ModelViewMatrix;  mat4 ModelViewProjectionMatrix;  uniform mat3 NormalMatrix;  float Deformation;};",
+    "shader": "uniform Transform{  mat4 ModelViewMatrix;  mat4 ModelViewProjectionMatrix;  uniform mat3 NormalMatrix;  float Deformation;};",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "in Material{  smooth in vec4 Color1;  smooth vec4 Color2;  vec2 TexCoord;};",
+    "shader": "in Material{  smooth in vec4 Color1;  smooth vec4 Color2;  vec2 TexCoord;};",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "out Vertex{  vec4 Position;  vec2 Texture;} Coords;",
+    "shader": "out Vertex{  vec4 Position;  vec2 Texture;} Coords;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "uniform Transform {  mat4 ModelViewMatrix;  mat4 ModelViewProjectionMatrix;  float Deformation;} transforms[4];",
+    "shader": "uniform Transform {  mat4 ModelViewMatrix;  mat4 ModelViewProjectionMatrix;  float Deformation;} transforms[4];",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (triangles) in;",
+    "shader": "layout (triangles) in;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (origin_upper_left) in vec4 gl_FragCoord;",
+    "shader": "layout (origin_upper_left) in vec4 gl_FragCoord;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (pixel_center_integer) in vec4 gl_FragCoord;",
+    "shader": "layout (pixel_center_integer) in vec4 gl_FragCoord;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;",
+    "shader": "layout (origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (triangle_strip, max_vertices = 60) out;",
+    "shader": "layout (triangle_strip, max_vertices = 60) out;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (triangle_strip) out;",
+    "shader": "layout (triangle_strip) out;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (max_vertices = 60) out;",
+    "shader": "layout (max_vertices = 60) out;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (shared, column_major) uniform;",
+    "shader": "layout (shared, column_major) uniform;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "layout (std140) uniform Transform {  mat4 M1;  layout (column_major) mat4 M2;  mat3 N1;};",
+    "shader": "layout (std140) uniform Transform {  mat4 M1;  layout (column_major) mat4 M2;  mat3 N1;};",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "flat out vec4 gl_FrontColor;",
+    "shader": "flat out vec4 gl_FrontColor;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "lowp float color;",
+    "shader": "lowp float color;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "out mediump vec2 P;",
+    "shader": "out mediump vec2 P;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "highp mat4 m;",
+    "shader": "highp mat4 m;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "precision highp float;",
+    "shader": "precision highp float;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "precision highp int;",
+    "shader": "precision highp int;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "precision mediump int;",
+    "shader": "precision mediump int;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "invariant gl_Position;",
+    "shader": "invariant gl_Position;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "out vec3 Color;",
+    "shader": "out vec3 Color;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "invariant Color;",
+    "shader": "invariant Color;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "invariant centroid out vec3 Color;",
+    "shader": "invariant centroid out vec3 Color;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "vec4 color = vec4(0.0, 1.0, 0.0, 1.0);",
+    "shader": "vec4 color = vec4(0.0, 1.0, 0.0, 1.0);",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int i = 1 - 5 * 4 + 3;",
+    "shader": "int i = 1 - 5 * 4 + 3;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int i = 1 - (5 * 4) + 3;",
+    "shader": "int i = 1 - (5 * 4) + 3;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int i = (1 - 5) * 4 + 3;",
+    "shader": "int i = (1 - 5) * 4 + 3;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "int i = (1 - 5) * (4 + 3);",
+    "shader": "int i = (1 - 5) * (4 + 3);",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsTrue",
+    "source": "bool b = 1 < 2;",
+    "shader": "bool b = 1 < 2;",
+    "accepted": true
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "int a",
+    "shader": "void main() { int a }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "int a, b c;",
+    "shader": "void main() { int a, b c; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "precision high float;",
+    "shader": "void main() { precision high float; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "precision float f();",
+    "shader": "void main() { precision float f(); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "int float;",
+    "shader": "void main() { int float; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "struct a { };",
+    "shader": "void main() { struct a { }; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "struct a { int b, float c; };",
+    "shader": "void main() { struct a { int b, float c; }; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "int a = 0128;",
+    "shader": "void main() { int a = 0128; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "int a = 0xu;",
+    "shader": "void main() { int a = 0xu; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "float a = .e1;",
+    "shader": "void main() { float a = .e1; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "float a = 1.0e+1G;",
+    "shader": "void main() { float a = 1.0e+1G; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "int f();",
+    "shader": "void main() { int f(); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "int f(void);",
+    "shader": "void main() { int f(void); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "int f ( void ) ;",
+    "shader": "void main() { int f ( void ) ; }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "lowp ivec2 foo(lowp mat3);",
+    "shader": "void main() { lowp ivec2 foo(lowp mat3); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "float[5] foo();",
+    "shader": "void main() { float[5] foo(); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "void foo (float[5]);",
+    "shader": "void main() { void foo (float[5]); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "void foo (float a[5]);",
+    "shader": "void main() { void foo (float a[5]); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "float[] foo();",
+    "shader": "void main() { float[] foo(); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "float[5] foo();",
+    "shader": "void main() { float[5] foo(); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "float[5] foo(int[4]);",
+    "shader": "void main() { float[5] foo(int[4]); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "int f ();",
+    "shader": "void main() { int f (); }",
+    "accepted": false
+  },
+  {
+    "group": "DeclarationsFalse",
+    "source": "float a[5][3];",
+    "shader": "void main() { float a[5][3]; }",
+    "accepted": false
+  },
+  {
+    "group": "FunctionDefinitionsTrue",
+    "source": "void main ()\n{\n}",
+    "shader": "void main ()\n{\n}",
+    "accepted": true
+  },
+  {
+    "group": "FunctionDefinitionsTrue",
+    "source": "void main ()\n{\n  if (intensity < 0.0)\n    return;\n}",
+    "shader": "void main ()\n{\n  if (intensity < 0.0)\n    return;\n}",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int a; // a comment",
+    "shader": "int a; // a comment",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int a; /* another comment */",
+    "shader": "int a; /* another comment */",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int a; // a comment\n",
+    "shader": "int a; // a comment\n",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int a; /* another comment */\n",
+    "shader": "int a; /* another comment */\n",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int a; /* another comment\non multiple\nlines.*/",
+    "shader": "int a; /* another comment\non multiple\nlines.*/",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int a; /* another comment\non multiple\nlines.*/\n",
+    "shader": "int a; /* another comment\non multiple\nlines.*/\n",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int a; /* another comment\non multiple\nlines.\n*/",
+    "shader": "int a; /* another comment\non multiple\nlines.\n*/",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "/* before */ int a;",
+    "shader": "/* before */ int a;",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "// before\nint a;",
+    "shader": "// before\nint a;",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int /* middle */ a;",
+    "shader": "int /* middle */ a;",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int/* middle */a;",
+    "shader": "int/* middle */a;",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int a/* middle */;",
+    "shader": "int a/* middle */;",
+    "accepted": true
+  },
+  {
+    "group": "CommentsTrue",
+    "source": "int a; /* not a // nested comment */",
+    "shader": "int a; /* not a // nested comment */",
+    "accepted": true
+  },
+  {
+    "group": "CommentsFalse",
+    "source": "int a; /* no /* nested */  comment */",
+    "shader": "int a; /* no /* nested */  comment */",
+    "accepted": false
+  },
+  {
+    "group": "Sample",
+    "source": "glsl/sample-01.glsl",
+    "shader": "bool success;\nbool done = false;\nint i;\nint i, j = 42;\nint j = 1;\nuint k = 3u;\nfloat x = 1.0;\nfloat a = 1.5, b;\nvec2 texcoord1, texcoord2;\nvec3 position;\nvec4 myRGBA;\nivec2 textureLookup;\nbvec3 less;\nmat2 mat2D;\nmat3 optMatrix;\nmat4 view;\nmat3x2 m;\nstruct light\n{\n  float intensity;\n  vec3 position;\n} lightVar;\nlight lightVar3;\nfloat frequencies[3];\nuniform vec4 lightPosition[4];\nlight lights[];\nconst int numLights = 2;\nlight lights[numLights];\nint a[5];\nconst float coef = 2.75;\nint f ();\nfloat[5] foo();\nvoid foo (float[5]);\nvoid foo (float a[5]);\nconst vec3 zAxis = vec3 (0.0, 0.0, 1.0);\nin vec4 position;\nin vec3 normal;\nin vec2 texCoord[4];\nin float foo[];\ncentroid out vec2 TexCoord;\ninvariant centroid out vec4 Color;\ninvariant flat centroid out vec4 Color;\nnoperspective out float temperature;\nflat out vec3 myColor;\nnoperspective centroid out vec2 myTexCoord;\nout vec4 FragmentColor;\nout uint Luminosity;\nuniform Transform\n{\n  mat4 ModelViewMatrix;\n  mat4 ModelViewProjectionMatrix;\n  uniform mat3 NormalMatrix;\n  float Deformation;\n};\nin Material\n{\n  smooth in vec4 Color1;\n  smooth vec4 Color2;\n  vec2 TexCoord;\n};\nout Vertex\n{\n  vec4 Position;\n  vec2 Texture;\n} Coords;\nuniform Transform {\n  mat4 ModelViewMatrix;\n  mat4 ModelViewProjectionMatrix;\n  float Deformation;\n} transforms[4];\nlayout (triangles) in;\nlayout (origin_upper_left) in vec4 gl_FragCoord;\nlayout (pixel_center_integer) in vec4 gl_FragCoord;\nlayout (origin_upper_left, pixel_center_integer) in vec4 gl_FragCoord;\nlayout (triangle_strip, max_vertices = 60) out;\nlayout (triangle_strip) out;\nlayout (max_vertices = 60) out;\nlayout (shared, column_major) uniform;\nlayout (std140) uniform Transform {\n  mat4 M1;\n  layout (column_major) mat4 M2;\n  mat3 N1;\n};\nflat out vec4 gl_FrontColor;\nlowp float color;\nout mediump vec2 P;\nlowp ivec2 foo(lowp mat3);\nhighp mat4 m;\nprecision highp float;\nprecision highp int;\nprecision mediump int;\ninvariant gl_Position;\nout vec3 Color;\ninvariant Color;\ninvariant centroid out vec3 Color;\nvec4 color = vec4(0.0, 1.0, 0.0, 1.0);\nvoid main ()\n{\n}\nint i = 1 - 5 * 4 + 3;\nint i = 1 - (5 * 4) + 3;\nint i = (1 - 5) * 4 + 3;\nint i = (1 - 5) * (4 + 3);\nbool b = 1 < 2;\nvoid main ()\n{\n  if (intensity < 0.0) /* a comment */\n    return;\n\n  if (a & b)\n    return;\n\n  if (a | b)\n    return;\n\n  if (a && b)\n    return;\n\n  if (a || b)\n    return;\n}\n\nlayout (std140) uniform PatternBlock\n{ float pattern[100];\n  float arr[];\n};\n\nfloat x = a / b / c;\nfloat x = (a / b) / c;\nfloat x = a / (b / c);\n",
+    "accepted": true
+  }
+]

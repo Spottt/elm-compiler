@@ -1,0 +1,7 @@
+/target/
+/node_modules/
+/npm/platforms/
+/npm/checksums.json
+/release/
+/dist/
+*.tgz

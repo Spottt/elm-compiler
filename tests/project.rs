@@ -246,7 +246,15 @@ fn entry_lexical_errors_keep_the_source_path() {
     f.module("Main", "shader = [glsl||]");
     let error = f.graph().err().unwrap();
     assert!(
-        error.starts_with(&format!("{}:2:10:", f.root.join("src/Main.elm").display())),
+        // Canonical path: macOS temporary directories live behind the /var -> /private/var symlink.
+        error.starts_with(&format!(
+            "{}:2:10:",
+            f.root
+                .join("src/Main.elm")
+                .canonicalize()
+                .unwrap()
+                .display()
+        )),
         "{error}"
     );
 }

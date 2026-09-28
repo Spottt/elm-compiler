@@ -30,7 +30,7 @@ jobs:
       - run: rustup toolchain install 1.98.1 --profile minimal --component clippy --target ${{ matrix.target }}
       - if: matrix.package == 'linux-arm64'
         run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
-      - run: cargo +1.98.1 test --locked
+      - run: cargo +1.98.1 test --locked --no-fail-fast
       - run: cargo +1.98.1 clippy --locked --all-targets -- -D warnings
       - run: node --test distribution/*.test.mjs
       - run: cargo +1.98.1 build --locked --release --target ${{ matrix.target }}

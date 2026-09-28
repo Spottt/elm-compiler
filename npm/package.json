@@ -1,6 +1,6 @@
 {
   "name": "@spottt/elm-compiler",
-  "version": "0.3.0-alpha.4",
+  "version": "0.3.0-alpha.5",
   "description": "Fast Elm 0.19.1 compiler written in Rust (unofficial), with prebuilt binaries",
   "license": "BSD-3-Clause",
   "author": "Spottt",

@@ -105,7 +105,10 @@ jobs:
       - run: |
           tag=latest
           case "$GITHUB_REF_NAME" in *-*) tag=next ;; esac
-          npm publish ./*.tgz --access public --provenance --tag "$tag"
+          # npm only accepts provenance statements from public repositories.
+          provenance=""
+          [ "${{ github.event.repository.private }}" = "false" ] && provenance="--provenance"
+          npm publish ./*.tgz --access public $provenance --tag "$tag"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: |

@@ -1,7 +1,5 @@
 # Elm compiler in Rust
 
-<p align="center"><img src="https://github.com/user-attachments/assets/a3bfcfe1-bf13-4526-b2e0-1d9f987c0d5b" width="640" alt="Ferris (Rust) chases the Haskell logo away and the Elm tangram reassembles"></p>
-
 An independent, **unofficial** reimplementation of the [Elm](https://elm-lang.org)
 0.19 compiler, written in Rust. It parses, type-checks and generates
 JavaScript by itself — it never calls the official Haskell compiler.
@@ -19,6 +17,8 @@ _Linux x64, 16 threads, official Elm with 8 threads (`GHCRTS=-N8`), empty
 project caches, shared package cache, excluding bundling. This is one large
 codebase: Elm 0.19.2 reports large gains on other projects, and your
 numbers will differ; please share them in an issue._
+
+<p align="center"><img src="docs/benchmark.png" width="720" alt="Cold build time, peak memory and rebuild time for Elm 0.19.1, Elm 0.19.2 and this compiler on a 677-module application"></p>
 
 > **Status: alpha.** It compiles real applications that pass their test suites
 > and aims at full Elm 0.19.1 compatibility, with a few deliberate differences

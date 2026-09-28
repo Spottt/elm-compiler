@@ -109,6 +109,19 @@ Missing packages are downloaded from `package.elm-lang.org` into `ELM_HOME`
 and their archive hashes are verified. Builds work offline once the cache is
 populated.
 
+### Persistent compiler for watch mode
+
+`elm --make-worker` keeps one compiler process alive and takes `make` requests
+as JSON lines on stdin. Between requests it keeps the project and the analysis
+of unchanged modules in memory, so rebuilding after an edit is much cheaper
+than a new `elm make` (0.82 s vs 1.75 s after a value edit on our largest
+application). It is meant for bundler plugins, dev servers and editors; the
+protocol is documented in [docs/worker.md](docs/worker.md).
+
+Bundler integration (a Webpack/Vite plugin, hot reload that re-sends only the
+changed JavaScript) is not published yet: at Planexpo it lives in our own
+Webpack setup.
+
 ### With existing tooling
 
 Tools that look for `elm` in `node_modules/.bin` find it without any

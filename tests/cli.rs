@@ -105,3 +105,34 @@ fn source_errors_have_a_file_and_real_region_in_json() {
         6
     );
 }
+
+#[test]
+fn make_worker_speaks_json_lines_and_exits_at_end_of_input() {
+    use std::io::{BufRead, BufReader, Write};
+    let directory = std::env::temp_dir().join(format!("elm-rust-worker-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_planexpo-elm"))
+        .arg("--make-worker")
+        .current_dir(&directory)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
+    let mut next = || serde_json::from_str::<serde_json::Value>(&lines.next().unwrap().unwrap()).unwrap();
+    let ready = next();
+    assert_eq!(ready["protocol"], 1);
+    assert_eq!(ready["ready"], true);
+    let mut stdin = child.stdin.take().unwrap();
+    writeln!(stdin, "{{\"arguments\":[\"src/Main.elm\"]}}").unwrap();
+    let missing_project = next();
+    assert_eq!(missing_project["ok"], false);
+    assert!(missing_project["report"].is_object(), "{missing_project}");
+    writeln!(stdin, "{{\"arguments\":\"not a list\"}}").unwrap();
+    let invalid = next();
+    assert_eq!(invalid["ok"], false);
+    assert!(invalid["error"].as_str().unwrap().contains("invalid worker arguments"), "{invalid}");
+    drop(stdin);
+    assert!(child.wait().unwrap().success());
+    std::fs::remove_dir_all(&directory).unwrap();
+}

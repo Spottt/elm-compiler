@@ -1,4 +1,5 @@
-//! Private line-framed protocol for an owned development compiler process.
+//! Line-framed JSON protocol for an owned development compiler process
+//! (`--make-worker`, documented in docs/worker.md).
 //! Fixed cwd/environment; EOF releases the process and all bounded caches.
 use std::io::{BufRead, Write};
 use serde_json::{Value, json};

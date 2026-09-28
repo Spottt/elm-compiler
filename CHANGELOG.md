@@ -4,6 +4,14 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+
+- `elm --make-worker`: a persistent compiler process driven by JSON lines on
+  stdin/stdout, for bundler plugins and dev servers. Documented in
+  `docs/worker.md`. The former `--internal-make-worker` name still works.
+
 ## [0.3.0-alpha.7] - 2026-09-28
 
 ### Fixed

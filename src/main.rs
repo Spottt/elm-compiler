@@ -26,12 +26,13 @@ fn run() -> Result<(), String> {
         .ok_or("usage: planexpo-elm scan <source.elm>...")?;
     if command == "--compiler-help" {
         println!(
-            "planexpo-elm {} — experimental Elm 0.19.1 compiler\npublish (publish a package)\nbump (update the package version from API changes)\ndiff [<package>] [<old-version>] [<new-version>] (compare public APIs)\ninit (create an Elm application)\nrepl [--no-colors] [--interpreter <path>] (interactive session)\ninstall <author/package> (add a dependency)\nreactor [--port <number>] (browse and compile local files)\nmake <entry.elm> [--output <output.js|index.html>] [--report=json] [--no-cache] [--optimize|--debug] [--incremental]\nmake <source.elm>... --output <output.js|/dev/null>\nmake [--docs <docs.json>] (package exposed modules)\nInspection: scan, parse, graph, operators, names, declarations, check, codegen-check, link-js\nProfiling: profile <elm.json> <entry.elm> [--incremental] [--development] (no output cache)\nExperimental production runtime: link-js-prod <elm.json> <entry.elm> <output.js>",
+            "planexpo-elm {} — experimental Elm 0.19.1 compiler\npublish (publish a package)\nbump (update the package version from API changes)\ndiff [<package>] [<old-version>] [<new-version>] (compare public APIs)\ninit (create an Elm application)\nrepl [--no-colors] [--interpreter <path>] (interactive session)\ninstall <author/package> (add a dependency)\nreactor [--port <number>] (browse and compile local files)\nmake <entry.elm> [--output <output.js|index.html>] [--report=json] [--no-cache] [--optimize|--debug] [--incremental]\nmake <source.elm>... --output <output.js|/dev/null>\nmake [--docs <docs.json>] (package exposed modules)\n--make-worker (persistent make process, JSON lines on stdin/stdout; see docs/worker.md)\nInspection: scan, parse, graph, operators, names, declarations, check, codegen-check, link-js\nProfiling: profile <elm.json> <entry.elm> [--incremental] [--development] (no output cache)\nExperimental production runtime: link-js-prod <elm.json> <entry.elm> <output.js>",
             env!("CARGO_PKG_VERSION")
         );
         return Ok(());
     }
-    if command == "--internal-make-worker" {
+    // `--make-worker` is the documented name; the internal one stays for existing integrations.
+    if command == "--make-worker" || command == "--internal-make-worker" {
         if args.next().is_some() { return Err("unexpected worker argument".into()); }
         return make_worker::run();
     }

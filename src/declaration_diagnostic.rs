@@ -3,6 +3,50 @@ use crate::docs_diagnostic::{reflow, snippet_positions, text};
 use serde_json::{Value, json};
 use std::path::Path;
 
+/// An EOF immediately after a top-level definition's equals sign. Other
+/// unfinished expressions need their own parser context and are not guessed.
+pub fn unfinished_definition(
+    source: &str,
+    module: &str,
+    path: &Path,
+    explanation: &str,
+) -> Option<Value> {
+    if !explanation.starts_with("expected an indented continuation;")
+        && !explanation.starts_with("expected expression;")
+    {
+        return None;
+    }
+    let tokens = crate::lexer::lex(source).ok()?;
+    let equals = tokens.last()?;
+    if equals.text(source) != "=" || !source[equals.end as usize..].trim().is_empty() {
+        return None;
+    }
+    let first = tokens.iter().find(|token| token.row == equals.row)?;
+    let name = first.text(source);
+    if first.column != 1 || first.kind != crate::lexer::Kind::Lower || crate::parser::reserved(name)
+    {
+        return None;
+    }
+    let line = equals.row as usize;
+    let column = equals.column as usize + 1;
+    let mut message = snippet_positions(
+        source,
+        (line, column),
+        (line, column),
+        &format!("I got stuck while parsing the `{name}` definition:"),
+    )?;
+    text(&mut message, "\nI was expecting to see an expression next. What is it equal to?\n\nHere is a valid definition (with a type annotation) for reference:\n\n    greet : String -> String\n    greet name =\n      ".into());
+    message.push(json!({"bold":false,"underline":false,"color":"yellow","string":"\"Hello \""}));
+    text(&mut message, " ++ name ++ ".into());
+    message.push(json!({"bold":false,"underline":false,"color":"yellow","string":"\"!\""}));
+    text(&mut message, "\n\nThe top line (called a \"type annotation\") is optional. You can leave it off if\nyou want. As you get more comfortable with Elm and as your project grows, it\nbecomes more and more valuable to add them though! They work great as\ncompiler-verified documentation, and they often improve error messages!".into());
+    Some(
+        json!({"type":"compile-errors","errors":[{"path":path,"name":module,"problems":[{
+            "title":"UNFINISHED DEFINITION","region":{"start":{"line":line,"column":column},"end":{"line":line,"column":column}},"message":message
+        }]}]}),
+    )
+}
+
 pub fn report(source: &str, name: &str, path: &Path, line: usize, column: usize) -> Option<Value> {
     let tail: String = source
         .split('\n')

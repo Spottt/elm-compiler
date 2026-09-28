@@ -24,7 +24,11 @@ pub fn retain_public_globals(
         .chain(interface.operators.values())
         .copied()
         .collect();
-    globals.retain(|id, _| symbols.get(*id).module.as_ref() != module || public.contains(id));
+    // Foreign schemes are untouched. Scanning every global after every module
+    // made this cleanup quadratic in the project size.
+    for id in symbols.module_symbols(module) {
+        if !public.contains(id) { globals.remove(id); }
+    }
 }
 
 fn add(hash: &mut Sha256, bytes: &[u8]) {
@@ -44,6 +48,7 @@ pub fn fingerprint(
         let symbol = symbols.get(id);
         Ok(serde_json::to_string(&(symbol.module.as_ref(), symbol.name.as_ref())).unwrap())
     };
+    let mut fingerprints = engine.fingerprints(identity);
     let mut hash = Sha256::new();
     add(&mut hash, b"elm-type-interface-v1");
     for (tag, entries) in [
@@ -59,7 +64,7 @@ pub fn fingerprint(
                 .get(id)
                 .or_else(|| catalog.constructors.get(id))
                 .ok_or_else(|| format!("missing interface scheme {name}"))?;
-            add(&mut hash, &engine.fingerprint_scheme(scheme, identity)?);
+            add(&mut hash, &fingerprints.scheme(scheme)?);
             if tag == "operators" {
                 let fixity = operators
                     .get(name)
@@ -95,7 +100,7 @@ pub fn fingerprint(
                 .ok_or_else(|| format!("missing interface alias {name}"))?;
             let mut roots = alias.parameters.clone();
             roots.push(alias.root);
-            add(&mut hash, &engine.fingerprint_types(&roots, identity)?);
+            add(&mut hash, &fingerprints.types(&roots)?);
         }
     }
     Ok(hash.finalize().into())

@@ -301,7 +301,7 @@ pub fn expression_with_definitions(
             }
             Expr::Literal(kind, raw) => next.push(text(literal::emit(*kind, raw, mode)?)),
             Expr::Var(_) | Expr::Operator(_) => next.push(text(reference(id)?.name)),
-            Expr::Unit => next.push(text(if matches!(mode, Mode::Development) {
+            Expr::Unit => next.push(text(if !matches!(mode, Mode::Production) {
                 "_Utils_Tuple0"
             } else {
                 "0"

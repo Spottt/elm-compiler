@@ -4,6 +4,120 @@ use serde_json::{Value, json};
 use std::io::IsTerminal;
 const PREFIX: &str = "ELM_DEPENDENCY_JSON:";
 
+/// Reporting.Exit.PP_BadArchiveHash. Keep the URL styled independently so
+/// both terminal and JSON consumers receive the official report structure.
+pub(crate) fn bad_archive_hash(
+    name: &str,
+    version: Version,
+    url: &str,
+    expected: &str,
+    actual: &str,
+) -> String {
+    let intro = reflow(&format!(
+        "I downloaded the source code for {name} {version} from:"
+    ));
+    let advice = reflow(
+        "This usually means that the package author moved the version tag, so report it to them and see if that is the issue. Folks on Elm slack can probably help as well.",
+    );
+    let report = json!({"type":"error","path":null,"title":"CORRUPT PACKAGE DATA",
+    "message":[
+        format!("{intro}\n\n    "),
+        {"bold":false,"underline":false,"color":"yellow","string":url},
+        format!("\n\nBut it looks like the hash of the archive has changed since publication:\n\n  Expected: {expected}\n    Actual: {actual}\n\n{advice}")
+    ]});
+    format!("{PREFIX}{report}")
+}
+
+/// Reports for responses received successfully but containing invalid data.
+pub(crate) fn bad_download_content(
+    name: &str,
+    version: Version,
+    url: &str,
+    endpoint: bool,
+) -> String {
+    let intro = reflow(&if endpoint {
+        format!(
+            "I need to find the latest download link for {name} {version}, but I ran into corrupted information from:"
+        )
+    } else {
+        format!("I downloaded the source code for {name} {version} from:")
+    });
+    let advice = reflow(if endpoint {
+        "Is something weird with your internet connection. We have gotten reports that schools, businesses, airports, etc. sometimes intercept requests and add things to the body or change its contents entirely. Could that be the problem?"
+    } else {
+        "But I was unable to unzip the data. Maybe there is something weird with your internet connection. We have gotten reports that schools, businesses, airports, etc. sometimes intercept requests and add things to the body or change its contents entirely. Could that be the problem?"
+    });
+    let report = json!({"type":"error","path":null,"title":"PROBLEM DOWNLOADING PACKAGE",
+        "message":[format!("{intro}\n\n    "),
+            {"bold":false,"underline":false,"color":"yellow","string":url},
+            format!("\n\n{advice}")]});
+    format!("{PREFIX}{report}")
+}
+
+pub(crate) fn download_status(context: &str, url: &str, code: u16, reason: &str) -> String {
+    let intro = reflow(&format!("{context}, so I tried to fetch:"));
+    let advice = reflow(
+        "This may mean some online endpoint changed in an unexpected way, so if does not seem like something on your side is causing this (e.g. firewall) please report this to https://github.com/elm/compiler/issues with your operating system, Elm version, the command you ran, the terminal output, and any additional information that can help others reproduce the error!",
+    );
+    let status_line = reflow(&format!("But it came back as {code} {reason}"));
+    let code_offset = "But it came back as ".len();
+    let report = json!({"type":"error","path":null,"title":"PROBLEM DOWNLOADING PACKAGE",
+    "message":[format!("{intro}\n\n    "),
+        {"bold":false,"underline":false,"color":"yellow","string":url},
+        "\n\nBut it came back as ",
+        {"bold":false,"underline":false,"color":"RED","string":code.to_string()},
+        format!("{}\n\n{advice}", &status_line[code_offset + code.to_string().len()..])
+    ]});
+    format!("{PREFIX}{report}")
+}
+
+/// Preserve the actual transport-library explanation rather than inventing a
+/// Haskell exception (some connectors discard proxy status details).
+pub(crate) fn download_transport(context: &str, url: &str, detail: &str) -> String {
+    let intro = reflow(&format!("{context}, so I tried to fetch:"));
+    let advice = reflow(
+        "Are you somewhere with a slow internet connection? Or no internet? Does the link I am trying to fetch work in your browser? Maybe the site is down? Does your internet connection have a firewall that blocks certain domains? It is usually something like that!",
+    );
+    let indented = detail.replace('\n', "\n    ");
+    let report = json!({"type":"error","path":null,"title":"PROBLEM DOWNLOADING PACKAGE",
+    "message":[format!("{intro}\n\n    "),
+        {"bold":false,"underline":false,"color":"yellow","string":url},
+        format!("\n\nBut my HTTP library is giving me the following error message:\n\n    {indented}\n\n{advice}")
+    ]});
+    format!("{PREFIX}{report}")
+}
+
+pub(crate) fn bad_build(
+    name: &str,
+    version: &str,
+    dependencies: &std::collections::BTreeMap<String, String>,
+) -> String {
+    let fingerprint = dependencies
+        .iter()
+        .map(|(name, version)| format!("{name} {version}"))
+        .collect::<Vec<_>>()
+        .join("\n    ");
+    let advice = reflow(
+        "This probably means it has package constraints that are too wide. It may be possible to tweak your elm.json to avoid the root problem as a stopgap. Head over to https://elm-lang.org/community to get help figuring out how to take this path!",
+    );
+    let note = reflow(
+        "Note: To help with the root problem, please report this to the package author along with the following information:",
+    );
+    let end = reflow(
+        "If you want to help out even more, try building the package locally. That should give you much more specific information about why this package is failing to build, which will in turn make it easier for the package author to fix it!",
+    );
+    format!(
+        "{PREFIX}{}",
+        json!({"type":"error","path":null,"title":"PROBLEM BUILDING DEPENDENCIES","message":[
+            "I ran into a compilation error when trying to build the following package:\n\n    ",
+            {"bold":false,"underline":false,"color":"RED","string":format!("{name} {version}")},
+            format!("\n\n{advice}\n\n"),
+            {"bold":false,"underline":true,"color":null,"string":"Note"},
+            format!("{}\n\n    {fingerprint}\n\n{end}", &note[4..])
+        ]})
+    )
+}
+
 pub(crate) fn bad_cache(name: &str, version: Version) -> String {
     let first = reflow(&format!(
         "I need the elm.json of {name} {version} to help me search for a set of compatible packages. I had it cached locally, but it looks like the file was corrupted!"

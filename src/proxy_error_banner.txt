@@ -1,0 +1,25 @@
+
+-- ERROR -----------------------------------------------------------------------
+
+I ran into something that bypassed the normal error reporting process! I
+extracted whatever information I could from the internal error:
+
+>   {DETAIL}
+
+These errors are usually pretty confusing, so start by asking around on one of
+forums listed at https://elm-lang.org/community to see if anyone can get you
+unstuck quickly.
+
+-- REQUEST ---------------------------------------------------------------------
+
+If you are feeling up to it, please try to get your code down to the smallest
+version that still triggers this message. Ideally in a single Main.elm and
+elm.json file.
+
+From there open a NEW issue at https://github.com/elm/compiler/issues with your
+reduced example pasted in directly. (Not a link to a repo or gist!) Do not worry
+about if someone else saw something similar. More examples is better!
+
+This kind of error is usually tied up in larger architectural choices that are
+hard to change, so even when we have a couple good examples, it can take some
+time to resolve in a solid way.elm: {DETAIL}

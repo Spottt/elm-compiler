@@ -1,6 +1,6 @@
 //! Experimental whole-project assembly; entry-point exports are added separately.
 use crate::{analyze::Report, js_names, kernel, module_codegen, project::Graph};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{borrow::Borrow, collections::{BTreeMap, BTreeSet, HashMap, HashSet}};
 pub fn helpers() -> String {
     // Persistent argument lists permit reusing a partially applied constructor
     // without copying the prefix for each additional argument.
@@ -39,14 +39,63 @@ function _Rust_curry(arity,fun){
     }
     out
 }
-pub fn assemble(graph: &Graph, report: Report) -> Result<String, String> {
+/// Link one entry from a successful shared analysis. `graph` must be that
+/// entry's complete discovery snapshot, drawn from the same source revision.
+/// Its module order and kernels preserve ordinary single-entry output ordering.
+pub fn assemble_entry(graph: &Graph, report: Report) -> Result<String, String> {
+    assemble_entry_shared(graph, &report)
+}
+
+/// Reuse analysis metadata across entry bundles. Only the cheap shared-definition
+/// vector and entry roots are copied; cycle initialization remains copy-on-write.
+pub fn assemble_entry_shared(graph: &Graph, report: &Report) -> Result<String, String> {
+    if graph.entries.len() != 1 || graph.entries[0] != graph.entry {
+        return Err("entry linking requires one entry".into());
+    }
+    if report.mode != kernel::Mode::Development {
+        return Err("entry linking currently requires development mode".into());
+    }
+    let entry = report.entry_outputs.get(&graph.entry)
+        .ok_or_else(|| format!("missing analyzed entry {}", graph.entry))?;
+    let mut generated = report.generated.clone();
+    let order: BTreeMap<_, _> = graph.modules.iter().enumerate()
+        .map(|(index, module)| (format!("{}:{}", module.owner, module.name), index)).collect();
+    let ranks: HashMap<_, _> = report.link_names.iter()
+        .filter_map(|((module, _), symbol)| order.get(module).map(|rank| (*symbol, *rank))).collect();
+    generated.sort_by_key(|definition| ranks.get(&definition.symbol).copied());
+    assemble_parts(graph, report, generated, entry.roots.clone(), Some(&entry.javascript))
+}
+
+pub fn assemble(graph: &Graph, mut report: Report) -> Result<String, String> {
+    let generated = std::mem::take(&mut report.generated);
+    let roots = std::mem::take(&mut report.link_roots);
+    assemble_parts(graph, &report, generated, roots, report.main_export.as_deref())
+}
+
+fn assemble_parts(
+    graph: &Graph,
+    report: &Report,
+    generated: Vec<std::rc::Rc<module_codegen::Definition>>,
+    mut roots: BTreeSet<crate::names::SymbolId>,
+    export: Option<&str>,
+) -> Result<String, String> {
     if !report.generation_errors.is_empty() {
         return Err(report.generation_errors.join("\n"));
     }
-    let mut roots = report.link_roots;
     let mut out = String::from("(function(scope){\n'use strict';\n");
     out.push_str(&helpers());
-    for module in &graph.modules {
+    let mut kernel_modules: Vec<_> = graph
+        .modules
+        .iter()
+        .filter(|module| module.kernel)
+        .collect();
+    if report.mode == kernel::Mode::Debug {
+        // Browser chooses its implementation at initialization time. The
+        // debugger's functions only use other kernels when called, so defining
+        // them first makes Browser.element/document select their wrappers.
+        kernel_modules.sort_by_key(|module| !module.name.ends_with("Kernel.Debugger"));
+    }
+    for module in kernel_modules {
         if !module.kernel {
             continue;
         }
@@ -76,7 +125,7 @@ pub fn assemble(graph: &Graph, report: Report) -> Result<String, String> {
         out.push_str(&rendered);
         out.push('\n');
     }
-    let definitions = module_codegen::order(reachable(report.generated, roots))?;
+    let definitions = module_codegen::order_shared(reachable_definitions(generated, roots))?;
     for definition in &definitions {
         out.push_str(&definition.javascript);
     }
@@ -86,8 +135,8 @@ pub fn assemble(graph: &Graph, report: Report) -> Result<String, String> {
             out.push_str(&registration.javascript);
         }
     }
-    if let Some(export) = report.main_export {
-        out.push_str(&export);
+    if let Some(export) = export {
+        out.push_str(export);
     }
     // Match Elm's script/CommonJS contract: the enclosing module's `this`
     // is its exports object under require/Webpack, and the window in a script.
@@ -145,8 +194,19 @@ pub fn reachable(
     definitions: Vec<module_codegen::Definition>,
     roots: BTreeSet<crate::names::SymbolId>,
 ) -> Vec<module_codegen::Definition> {
-    let index: BTreeMap<_, _> = definitions.iter().map(|d| (d.symbol, d)).collect();
-    let mut seen = BTreeSet::new();
+    reachable_definitions(definitions, roots)
+}
+
+fn reachable_definitions<D: Borrow<module_codegen::Definition>>(
+    definitions: Vec<D>,
+    roots: BTreeSet<crate::names::SymbolId>,
+) -> Vec<D> {
+    let index: HashMap<_, _> = definitions.iter().map(|d| {
+        let definition: &module_codegen::Definition = d.borrow();
+        (definition.symbol, definition)
+    }).collect();
+    // Lookup tables are never iterated: emission retains the input order.
+    let mut seen = HashSet::with_capacity(definitions.len());
     let mut pending: Vec<_> = roots.into_iter().collect();
     while let Some(symbol) = pending.pop() {
         if !seen.insert(symbol) {
@@ -161,6 +221,6 @@ pub fn reachable(
     }
     definitions
         .into_iter()
-        .filter(|d| seen.contains(&d.symbol))
+        .filter(|d| seen.contains(&Borrow::<module_codegen::Definition>::borrow(d).symbol))
         .collect()
 }

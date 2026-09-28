@@ -5,6 +5,8 @@
 mod diagnostic;
 mod fingerprint;
 mod snapshot;
+mod prepared;
+pub(crate) use prepared::PreparedTypes;
 use crate::names::SymbolId;
 use std::{
     borrow::Cow,
@@ -47,7 +49,9 @@ pub enum Term {
     Unit,
     Tuple(Vec<Ty>),
     Record {
-        fields: BTreeMap<String, Ty>,
+        // Copies relocate type handles but share immutable field text with
+        // prepared artifacts and checkpoints; ordering remains lexical.
+        fields: BTreeMap<Rc<str>, Ty>,
         extension: Option<Ty>,
     },
 }
@@ -57,7 +61,7 @@ enum Descriptor {
     Rigid { level: u32, constraint: Constraint },
     Structure(Rc<Term>),
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Node {
     parent: Ty,
     rank: u32,
@@ -77,14 +81,44 @@ pub struct Scheme {
     pub quantified: BTreeSet<Ty>,
 }
 struct RecordRow<'a> {
-    fields: Cow<'a, BTreeMap<String, Ty>>,
+    fields: Cow<'a, BTreeMap<Rc<str>, Ty>>,
     extension: Option<Ty>,
 }
-#[derive(Debug)]
+/// Reused membership storage for non-nested type-graph traversals. A fresh
+/// epoch makes previous visits irrelevant, including after node compaction.
+#[derive(Debug, Default, Clone)]
+struct TypeVisits {
+    marks: Vec<u32>,
+    epoch: u32,
+}
+impl TypeVisits {
+    fn begin(&mut self, nodes: usize) {
+        self.marks.resize(nodes, 0);
+        self.epoch = self.epoch.wrapping_add(1);
+        if self.epoch == 0 {
+            self.marks.fill(0);
+            self.epoch = 1;
+        }
+    }
+    fn insert(&mut self, ty: Ty) -> bool {
+        let mark = &mut self.marks[ty.0 as usize];
+        if *mark == self.epoch {
+            false
+        } else {
+            *mark = self.epoch;
+            true
+        }
+    }
+}
+#[derive(Debug, Clone)]
 pub struct Engine {
     nodes: Vec<Node>,
     builtins: Builtins,
     display_names: Option<BTreeMap<Ty, String>>,
+    debug_field_order: Option<BTreeMap<Ty, Vec<String>>>,
+    diagnostic_errors: Option<BTreeSet<Ty>>,
+    infinite_type: Option<(Ty, Ty)>,
+    visits: TypeVisits,
 }
 impl Engine {
     pub fn new(builtins: Builtins) -> Self {
@@ -92,6 +126,10 @@ impl Engine {
             nodes: Vec::new(),
             builtins,
             display_names: None,
+            debug_field_order: None,
+            diagnostic_errors: None,
+            infinite_type: None,
+            visits: TypeVisits::default(),
         }
     }
     fn node(&mut self, descriptor: Descriptor) -> Ty {
@@ -107,6 +145,18 @@ impl Engine {
         self.node(Descriptor::Variable { level, constraint })
     }
     /// Enable source-name retention for REPL display only, before inference.
+    pub fn track_debug_types(&mut self) {
+        self.track_display_names();
+        self.debug_field_order.get_or_insert_with(BTreeMap::new);
+    }
+    pub(crate) fn record_field_order(&mut self, ty: Ty, fields: impl Iterator<Item = String>) {
+        if let Some(orders) = &mut self.debug_field_order {
+            orders.insert(ty, fields.collect());
+        }
+    }
+    pub(crate) fn tracks_display_names(&self) -> bool {
+        self.display_names.is_some()
+    }
     pub fn track_display_names(&mut self) {
         self.display_names.get_or_insert_with(BTreeMap::new);
     }
@@ -124,6 +174,13 @@ impl Engine {
             names.entry(to).or_insert(name);
         }
     }
+    pub fn named_rigid(&mut self, level: u32, constraint: Constraint, name: &str) -> Ty {
+        let ty = self.rigid(level, constraint);
+        if let Some(names) = &mut self.display_names {
+            names.insert(ty, name.into());
+        }
+        ty
+    }
     pub fn rigid(&mut self, level: u32, constraint: Constraint) -> Ty {
         self.node(Descriptor::Rigid { level, constraint })
     }
@@ -137,6 +194,26 @@ impl Engine {
     pub fn term(&mut self, term: Term) -> Ty {
         self.node(Descriptor::Structure(Rc::new(term)))
     }
+    pub(crate) fn contains_type(&mut self, root: Ty, target: Ty) -> bool {
+        let target = self.find(target);
+        let mut pending = vec![root];
+        self.visits.begin(self.nodes.len());
+        while let Some(id) = pending.pop() {
+            let id = self.find(id);
+            if id == target {
+                return true;
+            }
+            if self.visits.insert(id)
+                && let Descriptor::Structure(term) = &self.nodes[id.0 as usize].descriptor
+            {
+                pending.extend(Self::children(term));
+            }
+        }
+        false
+    }
+    pub(crate) fn take_infinite_type(&mut self) -> Option<(Ty, Ty)> {
+        self.infinite_type.take()
+    }
     pub fn node_count(&self) -> usize {
         self.nodes.len()
     }
@@ -144,6 +221,18 @@ impl Engine {
     /// handles and structural edges. Call only after transient inference state
     /// has been dropped; handles not included in `roots` become invalid.
     pub fn compact(&mut self, roots: &mut [Ty]) {
+        self.compact_with_policy(roots, false);
+    }
+    /// Analysis may leave a small number of empty slots rather than copy a
+    /// mostly live graph shared with its checkpoint. Dead payloads are released
+    /// either way; return whether external handles have been relocated.
+    pub(crate) fn compact_if_useful(&mut self, roots: &mut [Ty]) -> bool {
+        self.compact_with_policy(roots, true)
+    }
+    fn compact_with_policy(&mut self, roots: &mut [Ty], defer_sparse: bool) -> bool {
+        let profiling = std::env::var_os("PLANEXPO_ELM_PROFILE_COMPACTION").is_some();
+        let started = profiling.then(std::time::Instant::now);
+        let before = self.nodes.len();
         let mut relocation = vec![None; self.nodes.len()];
         let mut live = Vec::new();
         let mut pending = roots.to_vec();
@@ -158,6 +247,7 @@ impl Engine {
                 pending.extend(Self::children(term));
             }
         }
+        let marked_ms = started.map(|start| start.elapsed().as_secs_f64() * 1000.0);
         // Release unreachable descriptors first, including union-find aliases
         // that may retain an Rc also owned by a live root. Parent links remain
         // intact until all child handles have been relocated.
@@ -170,12 +260,45 @@ impl Engine {
                 node.descriptor = empty();
             }
         }
+        let released_ms = started.map(|start| start.elapsed().as_secs_f64() * 1000.0);
+        if defer_sparse && self.nodes.len() - live.len() < self.nodes.len() / 10 {
+            // Preserve parent links: a live external handle can still refer to
+            // an alias whose descriptor was discarded above. The next pass
+            // counts these slots again, so accumulated garbage is not hidden.
+            if let Some(errors) = &mut self.diagnostic_errors {
+                errors.retain(|id| relocation[id.0 as usize].is_some());
+            }
+            if let Some(names) = &mut self.display_names {
+                names.retain(|id, _| relocation[id.0 as usize].is_some());
+            }
+            if let Some(orders) = &mut self.debug_field_order {
+                orders.retain(|id, _| relocation[id.0 as usize].is_some());
+            }
+            if let Some(started) = started {
+                eprintln!("ELM_COMPACTION_PROFILE {}", serde_json::json!({
+                    "before_nodes": before, "after_nodes": self.nodes.len(), "live_nodes": live.len(),
+                    "mark_ms": marked_ms.unwrap(), "release_ms": released_ms.unwrap() - marked_ms.unwrap(),
+                    "remap_ms": 0.0, "finish_ms": started.elapsed().as_secs_f64() * 1000.0 - released_ms.unwrap(),
+                    "shared_terms": 0, "shared_record_fields": 0, "skipped_relocation": true,
+                }));
+            }
+            return false;
+        }
+
+        let mut shared_terms = 0usize;
+        let mut shared_record_fields = 0usize;
         let mut nodes = Vec::with_capacity(live.len());
         for old in live {
             let descriptor = std::mem::replace(&mut self.nodes[old.0 as usize].descriptor, empty());
             let mut remap = |ty| relocation[self.find(ty).0 as usize].expect("marked type child");
             let descriptor = match descriptor {
                 Descriptor::Structure(mut term) => {
+                    if profiling && Rc::strong_count(&term) > 1 {
+                        shared_terms += 1;
+                        if let Term::Record { fields, .. } = term.as_ref() {
+                            shared_record_fields += fields.len();
+                        }
+                    }
                     // Usually uniquely owned now. Preserve an external immutable
                     // view if one exists, otherwise reuse record/string storage.
                     match Rc::make_mut(&mut term) {
@@ -213,8 +336,17 @@ impl Engine {
                 descriptor,
             });
         }
+        let remapped_ms = started.map(|start| start.elapsed().as_secs_f64() * 1000.0);
         for root in roots {
             *root = relocation[self.find(*root).0 as usize].expect("marked type root");
+        }
+        if let Some(errors) = self.diagnostic_errors.take() {
+            self.diagnostic_errors = Some(
+                errors
+                    .into_iter()
+                    .filter_map(|old| relocation[old.0 as usize])
+                    .collect(),
+            );
         }
         if let Some(names) = self.display_names.take() {
             self.display_names = Some(
@@ -224,7 +356,30 @@ impl Engine {
                     .collect(),
             );
         }
+        if let Some(orders) = self.debug_field_order.take() {
+            self.debug_field_order = Some(
+                orders
+                    .into_iter()
+                    .filter_map(|(old, order)| relocation[old.0 as usize].map(|new| (new, order)))
+                    .collect(),
+            );
+        }
         self.nodes = nodes;
+        if let Some(started) = started {
+            use std::io::Write;
+            let marked_ms = marked_ms.unwrap();
+            let released_ms = released_ms.unwrap();
+            let remapped_ms = remapped_ms.unwrap();
+            let line = format!("ELM_COMPACTION_PROFILE {}\n", serde_json::json!({
+                "before_nodes": before, "after_nodes": self.nodes.len(),
+                "mark_ms": marked_ms, "release_ms": released_ms - marked_ms,
+                "remap_ms": remapped_ms - released_ms,
+                "finish_ms": started.elapsed().as_secs_f64() * 1000.0 - remapped_ms,
+                "shared_terms": shared_terms, "shared_record_fields": shared_record_fields,
+            }));
+            let _ = std::io::stderr().write_all(line.as_bytes());
+        }
+        true
     }
     pub fn find(&mut self, mut id: Ty) -> Ty {
         let start = id;
@@ -251,28 +406,29 @@ impl Engine {
             }
         }
     }
-    fn children(term: &Term) -> Vec<Ty> {
-        match term {
-            Term::Alias(_, args, real) => args.iter().copied().chain([*real]).collect(),
-            Term::Named(_, args) | Term::Tuple(args) => args.clone(),
-            Term::Function(a, b) => vec![*a, *b],
-            Term::Record { fields, extension } => fields
-                .values()
-                .copied()
-                .chain(extension.iter().copied())
-                .collect(),
-            Term::Unit => vec![],
-        }
+    // Traverse borrowed edges without allocating a temporary Vec for every
+    // node in occurs checks, instantiation, generalization and compaction.
+    fn children(term: &Term) -> impl DoubleEndedIterator<Item = Ty> + Clone + '_ {
+        let (args, fields, tail) = match term {
+            Term::Alias(_, args, real) => (args.as_slice(), None, [Some(*real), None]),
+            Term::Named(_, args) | Term::Tuple(args) => (args.as_slice(), None, [None, None]),
+            Term::Function(a, b) => (&[][..], None, [Some(*a), Some(*b)]),
+            Term::Record { fields, extension } => (&[][..], Some(fields), [*extension, None]),
+            Term::Unit => (&[][..], None, [None, None]),
+        };
+        args.iter().copied()
+            .chain(fields.into_iter().flat_map(|fields| fields.values().copied()))
+            .chain(tail.into_iter().flatten())
     }
     fn occurs_and_lower(&mut self, var: Ty, root: Ty, level: u32) -> Result<(), String> {
         let mut pending = vec![root];
-        let mut seen = BTreeSet::new();
+        self.visits.begin(self.nodes.len());
         while let Some(id) = pending.pop() {
             let id = self.find(id);
             if id == var {
                 return Err("infinite type (occurs check)".into());
             }
-            if !seen.insert(id) {
+            if !self.visits.insert(id) {
                 continue;
             }
             match self.nodes[id.0 as usize].descriptor.clone() {
@@ -375,7 +531,12 @@ impl Engine {
         {
             return self.bind(var, *real, level, constraint);
         }
-        self.occurs_and_lower(var, value, level)?;
+        if let Err(error) = self.occurs_and_lower(var, value, level) {
+            if self.tracks_display_names() {
+                self.infinite_type.get_or_insert((var, value));
+            }
+            return Err(error);
+        }
         self.constrain(value, constraint)?;
         if matches!(
             self.nodes[value.0 as usize].descriptor,
@@ -402,7 +563,22 @@ impl Engine {
         }
         Ok(())
     }
+    /// A reported inferred constraint becomes an error type in Elm's solver.
+    /// Propagate it during diagnostic replay to suppress dependent cascades.
+    pub(crate) fn mark_diagnostic_error(&mut self, ty: Ty) {
+        let root = self.find(ty);
+        self.diagnostic_errors
+            .get_or_insert_with(BTreeSet::new)
+            .insert(root);
+    }
     fn unify_pair(&mut self, a: Ty, b: Ty, pending: &mut Vec<(Ty, Ty)>) -> Result<(), String> {
+        if let Some(errors) = &mut self.diagnostic_errors
+            && (errors.contains(&a) || errors.contains(&b))
+        {
+            errors.insert(a);
+            errors.insert(b);
+            return Ok(());
+        }
         let da = self.nodes[a.0 as usize].descriptor.clone();
         let db = self.nodes[b.0 as usize].descriptor.clone();
         match (da, db) {
@@ -531,7 +707,7 @@ impl Engine {
     // flat case so comparing a large record does not clone its field names.
     fn gather_fields<'a>(
         &mut self,
-        fields: &'a BTreeMap<String, Ty>,
+        fields: &'a BTreeMap<Rc<str>, Ty>,
         mut extension: Option<Ty>,
     ) -> Result<RecordRow<'a>, String> {
         let mut fields = Cow::Borrowed(fields);
@@ -573,9 +749,9 @@ impl Engine {
     }
     fn records(
         &mut self,
-        a: &BTreeMap<String, Ty>,
+        a: &BTreeMap<Rc<str>, Ty>,
         ea: Option<Ty>,
-        b: &BTreeMap<String, Ty>,
+        b: &BTreeMap<Rc<str>, Ty>,
         eb: Option<Ty>,
         pending: &mut Vec<(Ty, Ty)>,
     ) -> Result<(), String> {
@@ -667,11 +843,11 @@ impl Engine {
     }
     pub fn generalize(&mut self, root: Ty, environment_level: u32) -> Scheme {
         let mut pending = vec![root];
-        let mut seen = BTreeSet::new();
+        self.visits.begin(self.nodes.len());
         let mut quantified = BTreeSet::new();
         while let Some(id) = pending.pop() {
             let id = self.find(id);
-            if !seen.insert(id) {
+            if !self.visits.insert(id) {
                 continue;
             }
             match self.nodes[id.0 as usize].descriptor.clone() {
@@ -685,6 +861,23 @@ impl Engine {
             }
         }
         Scheme { root, quantified }
+    }
+    /// Constructor schemes are immutable templates. Diagnostic recovery must
+    /// never poison their shared concrete nodes for another occurrence.
+    pub(crate) fn instantiate_diagnostic_constructor(&mut self, scheme: &Scheme, level: u32) -> Ty {
+        self.copy_graph(
+            scheme.root,
+            &scheme.quantified,
+            level,
+            false,
+            HashMap::new(),
+            true,
+        )
+    }
+    /// Keep concrete expected types independent when collecting operand errors,
+    /// while preserving shared inference variables (e.g. the numeric type).
+    pub(crate) fn diagnostic_type_occurrence(&mut self, root: Ty) -> Ty {
+        self.copy_graph(root, &BTreeSet::new(), 0, false, HashMap::new(), true)
     }
     pub fn instantiate(&mut self, scheme: &Scheme, level: u32) -> Ty {
         self.copy_scheme(scheme, level, false)
@@ -723,7 +916,7 @@ impl Engine {
                 }
                 Descriptor::Structure(t) if !finish => {
                     pending.push((id, true));
-                    pending.extend(Self::children(&t).into_iter().map(|c| (c, false)));
+                    pending.extend(Self::children(&t).map(|c| (c, false)));
                 }
                 Descriptor::Structure(t) => {
                     let mut get = |old| mapped[&self.find(old)];
@@ -743,6 +936,11 @@ impl Engine {
                         },
                     };
                     let value = self.term(term);
+                    if let Some(orders) = &mut self.debug_field_order
+                        && let Some(order) = orders.get(&id).cloned()
+                    {
+                        orders.insert(value, order);
+                    }
                     mapped.insert(id, value);
                 }
             }
@@ -764,6 +962,7 @@ impl Engine {
             level,
             rigid,
             HashMap::new(),
+            false,
         )
     }
     /// Apply an alias's positional type arguments without mutating its template.
@@ -777,7 +976,7 @@ impl Engine {
             .iter()
             .map(|(parameter, value)| (self.find(*parameter), *value))
             .collect();
-        self.copy_graph(root, &BTreeSet::new(), 0, false, mapped)
+        self.copy_graph(root, &BTreeSet::new(), 0, false, mapped, false)
     }
     fn copy_graph(
         &mut self,
@@ -786,6 +985,7 @@ impl Engine {
         level: u32,
         rigid: bool,
         mut mapped: HashMap<Ty, Ty>,
+        copy_structures: bool,
     ) -> Ty {
         let mut pending = vec![(root, false)];
         while let Some((id, finish)) = pending.pop() {
@@ -812,17 +1012,17 @@ impl Engine {
                 }
                 Descriptor::Structure(t) if !finish => {
                     pending.push((id, true));
-                    pending.extend(Self::children(&t).into_iter().map(|c| (c, false)));
+                    pending.extend(Self::children(&t).map(|c| (c, false)));
                 }
                 Descriptor::Structure(t) => {
                     // Reuse unchanged subgraphs before constructing a new term.
                     // In particular, do not copy a large monomorphic record
                     // just because another branch of the scheme is polymorphic.
-                    let changed = Self::children(&t).iter().any(|child| {
-                        let old = self.find(*child);
+                    let changed = Self::children(&t).any(|child| {
+                        let old = self.find(child);
                         mapped[&old] != old
                     });
-                    if !changed {
+                    if !changed && !copy_structures {
                         mapped.insert(id, id);
                         continue;
                     }
@@ -849,11 +1049,67 @@ impl Engine {
                         },
                     };
                     let value = self.term(term);
+                    if let Some(orders) = &mut self.debug_field_order
+                        && let Some(order) = orders.get(&id).cloned()
+                    {
+                        orders.insert(value, order);
+                    }
                     mapped.insert(id, value);
                 }
             }
         }
         let root = self.find(root);
         mapped[&root]
+    }
+}
+
+#[cfg(test)]
+mod visit_tests {
+    use super::{Ty, TypeVisits};
+
+    #[test]
+    fn traversal_epochs_wrap_and_reuse_compacted_indices() {
+        let mut visits = TypeVisits { marks: vec![1, u32::MAX, 0], epoch: u32::MAX };
+        visits.begin(2);
+        assert!(visits.insert(Ty(0)));
+        assert!(!visits.insert(Ty(0)));
+        assert!(visits.insert(Ty(1)));
+        visits.begin(1);
+        assert!(visits.insert(Ty(0)));
+        visits.begin(3);
+        assert!(visits.insert(Ty(2)));
+    }
+}
+
+#[cfg(test)]
+mod sparse_compaction_tests {
+    use super::*;
+    #[test]
+    fn sparse_compaction_keeps_live_handles_but_releases_dead_payloads() {
+        let zero = SymbolId(0);
+        let mut engine = Engine::new(Builtins { int: zero, float: zero, string: zero, char: zero, list: zero });
+        engine.track_debug_types();
+        let vars: Vec<_> = (0..100).map(|i| engine.named_variable(1, Constraint::Any, &format!("item{i}"))).collect();
+        let record = engine.term(Term::Record { fields: vars.iter().enumerate().map(|(i, ty)| (Rc::from(format!("field{i}")), *ty)).collect(), extension: None });
+        let alias = engine.variable(1, Constraint::Any);
+        engine.unify(alias, record).unwrap();
+        let dead = engine.term(Term::Record { fields: (0..1000).map(|i| (Rc::from(format!("dead{i}")), vars[0])).collect(), extension: None });
+        let view = engine.structure(record).unwrap();
+        let before = engine.node_count();
+        let mut roots = [record, alias];
+        let mut checkpoint = engine.clone();
+        let exported = engine.export_types(&roots, |id| Ok(id.0.to_string())).unwrap();
+        assert!(!engine.compact_if_useful(&mut roots));
+        assert_eq!(roots, [record, alias]);
+        assert_eq!(engine.node_count(), before);
+        assert!(Rc::ptr_eq(&view, &engine.structure(roots[0]).unwrap()));
+        assert!(matches!(engine.nodes[dead.0 as usize].descriptor, Descriptor::Variable { .. }));
+        assert_eq!(engine.export_types(&roots, |id| Ok(id.0.to_string())).unwrap(), exported);
+        for _ in 0..100 { engine.variable(0, Constraint::Any); }
+        assert!(engine.compact_if_useful(&mut roots));
+        assert_eq!(engine.node_count(), 101);
+        assert_eq!(engine.export_types(&roots, |id| Ok(id.0.to_string())).unwrap(), exported);
+        assert_eq!(engine.find(roots[0]), engine.find(roots[1]));
+        assert_eq!(checkpoint.export_types(&[record, alias], |id| Ok(id.0.to_string())).unwrap(), exported);
     }
 }

@@ -5,14 +5,21 @@ This project is licensed under the BSD 3-Clause License (see LICENSE),
 Copyright (c) 2026, Spottt.
 
 It is an independent reimplementation of the Elm 0.19.1 compiler. It is not
-affiliated with or endorsed by the Elm project or its authors. Parts of it are
-ported from, or reproduce behaviour, runtime code or test fixtures of, the
-following works, whose licenses are distributed alongside this one:
+affiliated with or endorsed by the Elm project or its authors. It includes, is
+ported from, or reproduces behaviour of the following works, whose licenses are
+distributed with this one:
 
-* Elm compiler and core runtime — https://github.com/elm/compiler
+* Elm compiler, core runtime and reactor — https://github.com/elm/compiler
   Copyright 2012-present Evan Czaplicki. BSD 3-Clause. See LICENSE-ELM.
   Reference: tag 0.19.1, commit c9aefb6230f5e0bda03205ab0499f6e4af924495.
-  Historical tests (tests/upstream/elm-0.18.0) keep their original LICENSE.
+  The reactor interface (reactor/) and historical tests (tests/upstream/elm-0.18.0)
+  keep their original LICENSE files.
+
+* Elm packages compiled into the reactor interface (elm/browser, elm/core,
+  elm/html, ...). BSD 3-Clause. See reactor/licenses/.
+
+* Source Sans Pro and Source Code Pro fonts, embedded in the reactor interface.
+  Copyright Adobe. SIL Open Font License 1.1. See LICENSE-FONTS.
 
 * GHC base library — https://www.haskell.org/ghc/
   (c) The University of Glasgow and others. BSD-style. See LICENSE-GHC.
@@ -21,5 +28,10 @@ following works, whose licenses are distributed alongside this one:
   Copyright (c) Vo Minh Thu, 2010. BSD 3-Clause. See LICENSE-GLSL.
   Test fixtures (tests/upstream/language-glsl-0.3.0) keep their original LICENSE.
 
-Elm packages downloaded at build time from package.elm-lang.org are not part of
-this distribution and remain under their own licenses.
+* Patched Rust crates in vendor/ (compression-codecs, hyper-util, rustls,
+  tower-http), each under its original MIT, Apache-2.0 and/or ISC license
+  kept in its directory. See vendor/README.md for the patches.
+
+Other Rust dependencies are fetched from crates.io under their own licenses
+(MIT and/or Apache-2.0 for the most part). Elm packages downloaded at build
+time from package.elm-lang.org are not part of this distribution.

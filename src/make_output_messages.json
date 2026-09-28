@@ -1,0 +1,182 @@
+{
+  "no-main-js": {
+    "type": "error",
+    "path": null,
+    "title": "NO MAIN",
+    "message": [
+      "When producing a JS file, I require that the given file has a `main` value. That\nway Elm.Main.init() is definitely defined in the resulting file!\n\nTry adding a `main` value to your file? Or if you just want to verify that this\nmodule compiles, switch to --output=/dev/null to skip the code gen phase\naltogether.\n\n",
+      {
+        "bold": false,
+        "underline": true,
+        "color": null,
+        "string": "Note"
+      },
+      ": Adding a `main` value can be as brief as adding something like this:\n\n",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "CYAN",
+        "string": "import"
+      },
+      " Html\n\n",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "GREEN",
+        "string": "main"
+      },
+      " =\n  ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "CYAN",
+        "string": "Html"
+      },
+      ".text ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "yellow",
+        "string": "\"Hello!\""
+      },
+      "\n\nOr use https://package.elm-lang.org/packages/elm/core/latest/Platform#worker to\nmake a `main` with no user interface."
+    ]
+  },
+  "no-main-html": {
+    "type": "error",
+    "path": null,
+    "title": "NO MAIN",
+    "message": [
+      "When producing an HTML file, I require that the given file has a `main` value.\nThat way I have something to show on screen!\n\nTry adding a `main` value to your file? Or if you just want to verify that this\nmodule compiles, switch to --output=/dev/null to skip the code gen phase\naltogether.\n\n",
+      {
+        "bold": false,
+        "underline": true,
+        "color": null,
+        "string": "Note"
+      },
+      ": Adding a `main` value can be as brief as adding something like this:\n\n",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "CYAN",
+        "string": "import"
+      },
+      " Html\n\n",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "GREEN",
+        "string": "main"
+      },
+      " =\n  ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "CYAN",
+        "string": "Html"
+      },
+      ".text ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "yellow",
+        "string": "\"Hello!\""
+      },
+      "\n\nFrom there I can create an HTML file that says \"Hello!\" on screen. I recommend\nlooking through https://guide.elm-lang.org for more guidance on how to fill in\nthe `main` value."
+    ]
+  },
+  "multiple-no-main": {
+    "type": "error",
+    "path": null,
+    "title": "NO MAIN",
+    "message": [
+      "When producing a JS file, I require that given files all have `main` values.\nThat way functions like Elm.Main.init() are definitely defined in the resulting\nfile. I am missing `main` values in:\n\n    ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "RED",
+        "string": "Main\n    Other"
+      },
+      "\n\nTry adding a `main` value to them? Or if you just want to verify that these\nmodules compile, switch to --output=/dev/null to skip the code gen phase\naltogether.\n\n",
+      {
+        "bold": false,
+        "underline": true,
+        "color": null,
+        "string": "Note"
+      },
+      ": Adding a `main` value can be as brief as adding something like this:\n\n",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "CYAN",
+        "string": "import"
+      },
+      " Html\n\n",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "GREEN",
+        "string": "main"
+      },
+      " =\n  ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "CYAN",
+        "string": "Html"
+      },
+      ".text ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "yellow",
+        "string": "\"Hello!\""
+      },
+      "\n\nOr use https://package.elm-lang.org/packages/elm/core/latest/Platform#worker to\nmake a `main` with no user interface."
+    ]
+  },
+  "multiple-html": {
+    "type": "error",
+    "path": null,
+    "title": "TOO MANY FILES",
+    "message": [
+      "When producing an HTML file, I can only handle one file.\n\nSwitch to ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "yellow",
+        "string": "--output=/dev/null"
+      },
+      " if you just want to get compile errors. This skips\nthe code gen phase, so it can be a bit faster than other options sometimes.\n\nSwitch to ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "yellow",
+        "string": "--output=elm.js"
+      },
+      " if you want multiple `main` values available in a\nsingle JavaScript file. Then you can make your own customized HTML file that\nembeds multiple Elm nodes. The generated JavaScript also shares dependencies\nbetween modules, so it should be smaller than compiling each module separately."
+    ]
+  },
+  "debug-remnants": {
+    "type": "error",
+    "path": null,
+    "title": "DEBUG REMNANTS",
+    "message": [
+      "There are uses of the `Debug` module in the following modules:\n\n    ",
+      {
+        "bold": false,
+        "underline": false,
+        "color": "RED",
+        "string": "Main"
+      },
+      "\n\nBut the --optimize flag only works if all `Debug` functions are removed!\n\n",
+      {
+        "bold": false,
+        "underline": true,
+        "color": null,
+        "string": "Note"
+      },
+      ": The issue is that --optimize strips out info needed by `Debug` functions.\nHere are two examples:\n\n    (1) It shortens record field names. This makes the generated JavaScript is\n    smaller, but `Debug.toString` cannot know the real field names anymore.\n\n    (2) Values like `type Height = Height Float` are unboxed. This reduces\n    allocation, but it also means that `Debug.toString` cannot tell if it is\n    looking at a `Height` or `Float` value.\n\nThere are a few other cases like that, and it will be much worse once we start\ninlining code. That optimization could move `Debug.log` and `Debug.todo` calls,\nresulting in unpredictable behavior. I hope that clarifies why this restriction\nexists!"
+    ]
+  }
+}

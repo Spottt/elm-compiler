@@ -138,18 +138,21 @@ fn compaction_preserves_immutable_views_and_relocates_unified_records() {
         fields["value"], integer,
         "immutable pre-compaction view was modified"
     );
+    let shared_name = fields.keys().next().unwrap().clone();
     let relocated = e.structure(roots[0]).unwrap();
     let Term::Record { fields, .. } = &*relocated else {
         panic!("expected record")
     };
     assert_eq!(fields["value"], roots[2]);
+    assert!(std::rc::Rc::ptr_eq(&shared_name, fields.keys().next().unwrap()),
+        "relocating type handles must share immutable field names");
     assert_ne!(integer, roots[2]);
     let text = string(&mut e);
     assert!(e.unify(roots[2], text).is_err());
 }
 fn record(e: &mut Engine, fields: &[(&str, Ty)], extension: Option<Ty>) -> Ty {
     e.term(Term::Record {
-        fields: fields.iter().map(|(n, t)| (n.to_string(), *t)).collect(),
+        fields: fields.iter().map(|(n, t)| ((*n).into(), *t)).collect(),
         extension,
     })
 }
@@ -217,7 +220,7 @@ fn monomorphic_shared_records_are_reused_across_instantiations() {
     let mut e = engine();
     let i = int(&mut e);
     let fields = (0..10000)
-        .map(|n| (format!("field{n}"), i))
+        .map(|n| (format!("field{n}").into(), i))
         .collect::<BTreeMap<_, _>>();
     let large = e.term(Term::Record {
         fields,
@@ -316,7 +319,7 @@ fn alias_substitution_preserves_sharing_and_does_not_specialize_the_template() {
     let mut e = engine();
     let parameter = e.variable(1, C::Any);
     let i = int(&mut e);
-    let fields = (0..10000).map(|n| (format!("field{n}"), i)).collect();
+    let fields = (0..10000).map(|n| (format!("field{n}").into(), i)).collect();
     let large = e.term(Term::Record {
         fields,
         extension: None,
@@ -347,7 +350,7 @@ fn polymorphic_scheme_reuses_large_monomorphic_subgraphs() {
     let mut e = engine();
     let a = e.variable(1, C::Any);
     let i = int(&mut e);
-    let fields = (0..10000).map(|n| (format!("field{n}"), i)).collect();
+    let fields = (0..10000).map(|n| (format!("field{n}").into(), i)).collect();
     let large = e.term(Term::Record {
         fields,
         extension: None,
@@ -487,4 +490,43 @@ fn portable_type_graph_handles_deep_shared_structures_without_recursion() {
         cursor = *b;
     }
     assert!(matches!(&*dest.structure(cursor).unwrap(), Term::Unit));
+}
+
+#[test]
+fn rigid_annotation_names_survive_binding_to_inferred_variables() {
+    let mut e = engine();
+    e.track_display_names();
+    let annotation = e.named_rigid(1, C::Any, "custom");
+    let inferred = e.variable(1, C::Any);
+    e.unify(inferred, annotation).unwrap();
+    let artifact = e.export_types(&[inferred], |_| unreachable!()).unwrap();
+    assert_eq!(artifact["variable_names"]["0"], "custom");
+    assert_eq!(artifact["nodes"][0][0], "rigid");
+}
+
+#[test]
+fn repeated_type_traversals_observe_unification_and_compacted_handles() {
+    let mut e = engine();
+    let a = e.variable(2, C::Any);
+    let b = e.variable(1, C::Any);
+    let tuple = e.term(Term::Tuple(vec![a, a]));
+    assert_eq!(e.generalize(tuple, 1).quantified.len(), 1);
+    e.unify(a, b).unwrap();
+    assert!(e.generalize(tuple, 1).quantified.is_empty());
+    let mut roots = [tuple];
+    e.compact(&mut roots);
+    let fresh = e.variable(3, C::Any);
+    let function = e.term(Term::Function(roots[0], fresh));
+    let partial = e.generalize(function, 1);
+    assert_eq!(partial.quantified.len(), 1);
+    assert!(!e.is_closed_scheme(&partial));
+    let closed = e.generalize(function, 0);
+    assert_eq!(closed.quantified.len(), 2);
+    assert!(e.is_closed_scheme(&closed));
+    let outer = e.variable(0, C::Any);
+    e.unify(outer, function).unwrap();
+    assert!(e.generalize(function, 0).quantified.is_empty());
+    let recursive = e.variable(1, C::Any);
+    let cycle = e.term(Term::Function(recursive, function));
+    assert!(e.unify(recursive, cycle).unwrap_err().contains("infinite type"));
 }

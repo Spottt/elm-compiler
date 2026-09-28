@@ -12,7 +12,7 @@ pub fn encode(report: &Value) -> String {
 pub fn report_encoded(message: &str) -> Option<Value> {
     serde_json::from_str(message.strip_prefix(PREFIX)?).ok()
 }
-fn position(source: &str, offset: u32) -> Option<(usize, usize)> {
+pub(crate) fn position(source: &str, offset: u32) -> Option<(usize, usize)> {
     let prefix = source.get(..offset as usize)?;
     Some((
         prefix.bytes().filter(|b| *b == b'\n').count() + 1,
@@ -74,12 +74,15 @@ fn exports(ast: &Syntax<'_>) -> Option<BTreeMap<String, Span>> {
     Some(result)
 }
 pub(crate) fn reflow(text: &str) -> String {
+    reflow_width(text, 80)
+}
+pub(crate) fn reflow_width(text: &str, limit: usize) -> String {
     let mut output = String::new();
     let mut column = 0;
     for word in text.split_whitespace() {
         let width = word.chars().count();
         if column > 0 {
-            if column + 1 + width > 80 {
+            if column + 1 + width > limit {
                 output.push('\n');
                 column = 0;
             } else {
@@ -88,6 +91,69 @@ pub(crate) fn reflow(text: &str) -> String {
             }
         }
         output.push_str(word);
+        column += width;
+    }
+    output
+}
+/// Lay out a paragraph at Elm's terminal width without counting styling as text.
+/// A word can cross chunk boundaries (e.g. an underlined Hint and plain colon).
+pub(crate) fn reflow_chunks(chunks: Vec<Value>) -> Vec<Value> {
+    let mut words = Vec::new();
+    let mut word = Vec::new();
+    for chunk in chunks {
+        let value = chunk
+            .as_str()
+            .or_else(|| chunk["string"].as_str())
+            .unwrap_or("");
+        for part in value.split_inclusive(char::is_whitespace) {
+            let token = part.trim_end_matches(char::is_whitespace);
+            if !token.is_empty() {
+                if chunk.is_string() {
+                    text(&mut word, token.into());
+                } else {
+                    let mut styled = chunk.clone();
+                    styled["string"] = json!(token);
+                    word.push(styled);
+                }
+            }
+            if token.len() != part.len() && !word.is_empty() {
+                words.push(std::mem::take(&mut word));
+            }
+        }
+    }
+    if !word.is_empty() {
+        words.push(word);
+    }
+    let mut output = Vec::new();
+    let mut column = 0;
+    for word in words {
+        let width: usize = word
+            .iter()
+            .map(|chunk| {
+                chunk
+                    .as_str()
+                    .or_else(|| chunk["string"].as_str())
+                    .unwrap_or("")
+                    .chars()
+                    .count()
+            })
+            .sum();
+        if column != 0 {
+            if column + 1 + width > 80 {
+                text(&mut output, "\n".into());
+                column = 0;
+            } else {
+                text(&mut output, " ".into());
+                column += 1;
+            }
+        }
+        for chunk in word {
+            if let Some(value) = chunk.as_str() {
+                text(&mut output, value.into());
+            } else {
+                output.push(chunk);
+            }
+        }
         column += width;
     }
     output
@@ -135,6 +201,41 @@ pub(crate) fn snippet_positions(
     if line == end_line {
         text(&mut message, " ".repeat(column + width + 1));
         message.push(red("^".repeat(end_column.saturating_sub(column).max(1))));
+    }
+    Some(message)
+}
+
+pub(crate) fn snippet_highlight(
+    source: &str,
+    region: Span,
+    start: (usize, usize),
+    end: (usize, usize),
+    preface: &str,
+) -> Option<Vec<Value>> {
+    let first = position(source, region.start)?.0;
+    let last = position(source, region.end)?.0;
+    let width = last.to_string().len();
+    let underline = start.0 == end.0 && end.0 >= last;
+    let mut message = vec![];
+    text(&mut message, format!("{}\n\n", reflow(preface)));
+    for (offset, line) in source
+        .split('\n')
+        .enumerate()
+        .skip(first - 1)
+        .take(last - first + 1)
+    {
+        let number = offset + 1;
+        text(&mut message, format!("{number:>width$}|"));
+        if !underline && (start.0..=end.0).contains(&number) {
+            message.push(red(">".into()));
+        } else {
+            text(&mut message, " ".into());
+        }
+        text(&mut message, format!("{line}\n"));
+    }
+    if underline {
+        text(&mut message, " ".repeat(start.1 + width + 1));
+        message.push(red("^".repeat(end.1.saturating_sub(start.1).max(1))));
     }
     Some(message)
 }

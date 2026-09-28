@@ -133,7 +133,10 @@ pub fn resolve<'s>(ast: &mut Syntax<'s>, table: &Table) -> Result<(), String> {
         while !ops.is_empty() {
             reduce(&mut values, &mut ops, &mut pending);
         }
-        if let Some(root) = pending.pop() {
+        if let Some(mut root) = pending.pop() {
+            // The parsed chain includes delimiters around its final operand.
+            // Reducing it must not shorten the diagnostic region.
+            root.span = ast.expressions[index].span;
             ast.expressions[index] = root;
             ast.expressions.extend(pending);
         }

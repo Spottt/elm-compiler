@@ -7,7 +7,7 @@ bumps the version and pushes a tag.
 
 | Event                    | What CI does |
 | ------------------------ | ------------ |
-| Push / pull request      | Builds and tests the four binaries (`linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64`), assembles the npm tarball, installs it in an empty project and runs it. The tarball and binaries are kept as workflow artifacts. |
+| Push / pull request      | Builds and tests the five binaries (`linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64`, `win32-x64`), assembles the npm tarball, installs it in an empty project and compiles an Elm program with it. The tarball and binaries are kept as workflow artifacts. |
 | Push of tag `v<version>` | Same, then publishes **that exact tarball** to npm with provenance and creates a GitHub Release with the tarball, per-platform binaries and `SHA256SUMS`. |
 
 `distribution/stage-release.mjs` refuses to assemble a release when:
@@ -25,8 +25,9 @@ never be published directly.
 1. **npm**: the `@spottt` organisation must exist on npmjs.com. Create an
    automation (or granular) access token allowed to publish `@spottt/elm-compiler`.
 2. **GitHub → Settings → Environments**: create an environment named
-   `npm-publish`, add required reviewers (so every publication needs an explicit
-   approval), and add the secret `NPM_TOKEN` to it.
+   `npm-publish` restricted to `v*` tags, add the secret `NPM_TOKEN` to it and,
+   if your plan allows it, required reviewers so every publication needs an
+   explicit approval.
 3. Optionally protect `v*` tags so only maintainers can create them.
 
 ## Publishing a version
@@ -44,7 +45,7 @@ never be published directly.
    git push origin v0.4.0
    ```
 
-5. Approve the `npm-publish` deployment in the Actions tab.
+5. Approve the `npm-publish` deployment in the Actions tab (if reviewers are required).
 6. Check the result:
 
    ```sh

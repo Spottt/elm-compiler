@@ -174,3 +174,39 @@ fn corrupt_registry_is_refetched_and_failed_repair_preserves_original_bytes() {
         handle.join().unwrap();
     }
 }
+
+#[test]
+fn latest_registry_rejects_failed_refresh_without_losing_the_offline_cache() {
+    for (status, body) in [(503, "unavailable"), (200, "not json"), (200, "{}") ] {
+        let home = tempfile::tempdir().unwrap();
+        let (url, handle) = server(vec![
+            ("/all-packages", 200, r#"{"elm/core":["1.0.0"]}"#),
+            ("/all-packages/since/1", status, body),
+            ("/all-packages/since/1", status, body),
+            ("/all-packages/since/1", 200, "[]"),
+        ]);
+        let network = PackageNetwork::new(&url).unwrap();
+        let first = network.latest_registry(home.path()).unwrap();
+        let path = home.path().join("0.19.1/packages/registry.dat");
+        let before = std::fs::read(&path).unwrap();
+        let error = network.latest_registry(home.path()).unwrap_err();
+        let report = planexpo_elm::dependency_error::report_encoded(&error).unwrap();
+        assert_eq!(report["title"], "PROBLEM UPDATING PACKAGE LIST");
+        assert!(error.contains("/all-packages/since/1"));
+        let rendered = planexpo_elm::dependency_error::terminal_report(&report).unwrap();
+        if status == 200 {
+            assert!(rendered.contains(&format!("{} bytes", body.len())));
+            assert!(rendered.contains("whole thing:"));
+            assert!(rendered.contains(&format!("    {body}\n")));
+            assert!(!rendered.contains("HTTP library is giving"));
+        } else {
+            assert!(rendered.contains("503"));
+        }
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        let fallback = network.registry(home.path()).unwrap();
+        assert!(!fallback.online);
+        assert_eq!(fallback.registry, first);
+        assert_eq!(network.latest_registry(home.path()).unwrap(), first);
+        handle.join().unwrap();
+    }
+}

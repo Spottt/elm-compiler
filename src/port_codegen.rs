@@ -89,7 +89,7 @@ impl Generator<'_> {
                 Ok(if incoming {
                     format!(
                         "{null}({})",
-                        if matches!(self.mode, Mode::Development) {
+                        if !matches!(self.mode, Mode::Production) {
                             "_Utils_Tuple0"
                         } else {
                             "0"

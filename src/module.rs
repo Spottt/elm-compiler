@@ -1,17 +1,17 @@
 //! Module headers, export lists and imports. Body parsing lives in parser.rs.
 use crate::lexer::{Kind, Token};
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Exposed {
     Value(String),
     Type { name: String, constructors: bool },
     Operator(String),
 }
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Exposing {
     All,
     Explicit(Vec<Exposed>),
 }
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Effects {
     None,
     Ports,
@@ -20,13 +20,13 @@ pub enum Effects {
         subscription: Option<String>,
     },
 }
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Import {
     pub name: String,
     pub alias: Option<String>,
     pub exposing: Exposing,
 }
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
     pub explicit: bool,
     pub name: String,

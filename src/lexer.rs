@@ -274,7 +274,8 @@ fn operator(c: char) -> bool {
 }
 
 pub fn lex(source: &str) -> Result<Vec<Token>, String> {
-    lex_inner(source, None)
+    let (tokens, error) = lex_prefix(source);
+    match error { Some(error) => Err(error), None => Ok(tokens) }
 }
 
 /// Position after the trailing layout of an already lexed source. Starting at
@@ -346,6 +347,10 @@ fn lex_inner(source: &str, docs: Option<&mut Vec<DocComment>>) -> Result<Vec<Tok
 /// Discovery may use a completed header before a broken body. The failure is
 /// retained; callers must never treat this prefix as a successfully lexed file.
 pub fn lex_prefix(source: &str) -> (Vec<Token>, Option<String>) {
+    crate::session_cache::tokens(source, || lex_prefix_uncached(source))
+}
+
+fn lex_prefix_uncached(source: &str) -> (Vec<Token>, Option<String>) {
     if source.len() > u32::MAX as usize {
         return (Vec::new(), Some("source exceeds 4 GiB".into()));
     }

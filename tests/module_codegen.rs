@@ -471,3 +471,40 @@ if(a(0)!==11||b(0)!==21||c(0)!==32||a(0)!==11)throw Error('branch capture');
         String::from_utf8_lossy(&result.stderr)
     );
 }
+
+#[test]
+fn standalone_generation_rejects_missing_and_redundant_cases() {
+    for (branches, expected) in [
+        ("A -> 1", "missing patterns"),
+        ("_ -> 1\n        A -> 2", "redundant"),
+    ] {
+        let source = format!(
+            "module Main exposing (..)\ntype Choice = A | B\nf x =\n    case x of\n        {branches}\n"
+        );
+        let ast = parse(&source).unwrap();
+        let mut symbols = Symbols::default();
+        let (_, resolved) = names::resolve(
+            &ast,
+            "application:Main",
+            Environment::default(),
+            &mut symbols,
+        )
+        .unwrap();
+        let mut layouts = Layouts::default();
+        layouts
+            .register(&ast, "application:Main", &symbols)
+            .unwrap();
+        for mode in [Mode::Development, Mode::Production, Mode::Debug] {
+            let error = module_codegen::emit(
+                &ast,
+                "application:Main",
+                &resolved,
+                &symbols,
+                &layouts,
+                mode,
+            )
+            .unwrap_err();
+            assert!(error.contains(expected), "{error}");
+        }
+    }
+}

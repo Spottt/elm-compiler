@@ -27,13 +27,28 @@ pub fn global(module: &str, name: &str) -> Result<String, String> {
     ))
 }
 /// The same escaping must be used for Elm records and kernel ElmField tags.
-const JS_RESERVED: &str = "do if in NaN int for new try var let null true eval byte char goto long case else this void with enum false final float short break catch throw while class const super yield double native throws delete return switch typeof export import public static boolean default finally extends package private Infinity abstract volatile function continue debugger undefined arguments transient interface protected instanceof implements synchronized";
+macro_rules! reserved_words {
+    ($($word:literal),+ $(,)?) => {
+        const JS_RESERVED: &str = concat!($( $word, " ", )+);
+        fn is_reserved(name: &str) -> bool {
+            matches!(name, $( $word )|+)
+        }
+    };
+}
+reserved_words!(
+    "do", "if", "in", "NaN", "int", "for", "new", "try", "var", "let",
+    "null", "true", "eval", "byte", "char", "goto", "long", "case", "else", "this",
+    "void", "with", "enum", "false", "final", "float", "short", "break", "catch", "throw",
+    "while", "class", "const", "super", "yield", "double", "native", "throws", "delete", "return",
+    "switch", "typeof", "export", "import", "public", "static", "boolean", "default", "finally", "extends",
+    "package", "private", "Infinity", "abstract", "volatile", "function", "continue", "debugger", "undefined", "arguments",
+    "transient", "interface", "protected", "instanceof", "implements", "synchronized",
+);
 pub fn field(name: &str) -> String {
-    if JS_RESERVED
-        .split_whitespace()
-        .chain("F2 F3 F4 F5 F6 F7 F8 F9 A2 A3 A4 A5 A6 A7 A8 A9".split_whitespace())
-        .any(|word| word == name)
-    {
+    // Match the static vocabulary directly instead of scanning it for every
+    // record access, update, port conversion and kernel field reference.
+    let helper = matches!(name.as_bytes(), [b'F' | b'A', b'2'..=b'9']);
+    if helper || is_reserved(name) {
         format!("_{name}")
     } else {
         name.into()
@@ -77,7 +92,7 @@ pub fn kernel_field(index: usize) -> String {
         block *= 64;
     }
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Layouts {
     pub fields: crate::fields::Fields,
     indices: BTreeMap<SymbolId, usize>,
@@ -163,7 +178,7 @@ impl Layouts {
     }
     pub fn tag(&self, id: SymbolId, symbols: &Symbols, mode: Mode) -> Result<String, String> {
         let symbol = symbols.get(id);
-        if matches!(mode, Mode::Development) {
+        if !matches!(mode, Mode::Production) {
             return Ok(serde_json::to_string(symbol.name.as_ref()).unwrap());
         }
         let index = *self.indices.get(&id).ok_or("missing constructor layout")? as i64;

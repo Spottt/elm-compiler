@@ -5,6 +5,7 @@ use planexpo_elm::{
 
 fn graph(source: &str) -> Graph {
     Graph {
+        import_errors: Vec::new(),
         entry: "elm/core:Repl".into(),
         entries: vec!["elm/core:Repl".into()],
         manifests: vec![],

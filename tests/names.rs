@@ -170,3 +170,48 @@ fn duplicate_regions_follow_official_binding_and_constructor_order() {
         assert!(error.starts_with(region), "{source}: {error}");
     }
 }
+
+#[test]
+fn symbol_lookup_preserves_module_and_namespace_identity() {
+    let mut symbols = Symbols::default();
+    let value = symbols.intern("pkg:A", "Same", Space::Value, SymbolKind::Value);
+    let other = symbols.intern("pkg:B", "Same", Space::Value, SymbolKind::Value);
+    assert_ne!(value, other);
+    assert_eq!(symbols.lookup("pkg:A", "Same", Space::Value), Some(value));
+    assert_eq!(symbols.lookup("pkg:B", "Same", Space::Value), Some(other));
+    assert_eq!(symbols.lookup("pkg:A", "Same", Space::Type), None);
+    assert_eq!(symbols.lookup("pkg:A", "Unknown", Space::Value), None);
+    assert_eq!(symbols.lookup("pkg:Unknown", "Same", Space::Value), None);
+    assert_eq!(symbols.lookup("Same", "pkg:A", Space::Value), None);
+    assert_eq!(symbols.intern("pkg:A", "Same", Space::Value, SymbolKind::Value), value);
+    assert_eq!(symbols.entries.len(), 2);
+}
+
+#[test]
+fn repeated_imports_stay_unique_and_ambiguity_is_order_independent() {
+    use planexpo_elm::module::Exposing;
+    let mut symbols = Symbols::default();
+    let mut interfaces = Vec::new();
+    for module in ["A", "B", "C"] {
+        let id = symbols.intern(&format!("test:{module}"), "value", Space::Value, SymbolKind::Value);
+        interfaces.push(names::Interface { values: [("value".into(), id)].into(), ..Default::default() });
+    }
+    let mut env = Environment::default();
+    for _ in 0..3 {
+        env.import("Alias", &interfaces[0], &Exposing::All, &symbols).unwrap();
+    }
+    let (_, resolved) = names::resolve(&parse("x = (value, Alias.value)").unwrap(), "test:Main", env.clone(), &mut symbols).unwrap();
+    assert!(resolved.expressions.contains(&Some(Binding::Global(interfaces[0].values["value"]))));
+    let mut errors = Vec::new();
+    for order in [[1, 2, 1], [2, 1, 2]] {
+        let mut ambiguous = env.clone();
+        for index in order {
+            ambiguous.import("Alias", &interfaces[index], &Exposing::All, &symbols).unwrap();
+        }
+        errors.push(names::resolve(&parse("x = Alias.value").unwrap(), "test:Main", ambiguous, &mut symbols).err().unwrap());
+    }
+    assert_eq!(errors[0], errors[1]);
+    assert!(errors[0].contains("A.value") && errors[0].contains("B.value") && errors[0].contains("C.value"));
+    // Extending a cloned environment cannot change the original singleton.
+    assert!(names::resolve(&parse("x = Alias.value").unwrap(), "test:Main", env, &mut symbols).is_ok());
+}

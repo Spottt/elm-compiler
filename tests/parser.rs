@@ -399,7 +399,11 @@ fn record_patterns_require_indented_fields_and_closing_braces() {
 fn named_wildcard_is_reported_at_its_start_by_the_pattern_parser() {
     for name in ["_value", "__", "_État", "_123"] {
         let source = format!("module Main exposing (..)\nf {name} = 1");
-        assert!(parse(&source).unwrap_err().starts_with("2:3: pattern wildcard name"));
+        assert!(
+            parse(&source)
+                .unwrap_err()
+                .starts_with("2:3: pattern wildcard name")
+        );
     }
     assert!(parse("module Main exposing (..)\nf _ = 1").is_ok());
 }
@@ -408,27 +412,58 @@ fn named_wildcard_is_reported_at_its_start_by_the_pattern_parser() {
 fn pattern_alias_names_require_indentation_after_as() {
     assert!(parse("module Main exposing (..)\nf (x as\nname) = 1").is_err());
     assert!(parse("module Main exposing (..)\nf (x as\n    name) = name").is_ok());
-    assert!(parse("module Main exposing (..)\nf (x as Name) = 1").unwrap_err().contains("pattern alias name"));
+    assert!(
+        parse("module Main exposing (..)\nf (x as Name) = 1")
+            .unwrap_err()
+            .contains("pattern alias name")
+    );
 }
 
 #[test]
 fn floating_patterns_report_the_entire_number() {
     for number in ["1.0", "1e3", "1.25e-3", "1E+3"] {
         let source = format!("module Main exposing (..)\nf {number} = 1");
-        assert!(parse(&source).unwrap_err().starts_with(&format!("2:3: pattern float {};", number.len())));
+        assert!(
+            parse(&source)
+                .unwrap_err()
+                .starts_with(&format!("2:3: pattern float {};", number.len()))
+        );
     }
 }
 
 #[test]
 fn cons_pattern_errors_preserve_indentation_and_binding_context() {
-    assert!(parse("module Main exposing (..)\nf (x ::\nxs) = 1").unwrap_err().starts_with("2:8: pattern start indent 2"));
-    assert!(parse("module Main exposing (..)\nf (x :: if) = 1").unwrap_err().contains("pattern start argument"));
-    assert!(parse("module Main exposing (..)\nf x = case x of\n    y :: if -> 1").unwrap_err().contains("pattern start binding"));
+    assert!(
+        parse("module Main exposing (..)\nf (x ::\nxs) = 1")
+            .unwrap_err()
+            .starts_with("2:8: pattern start indent 2")
+    );
+    assert!(
+        parse("module Main exposing (..)\nf (x :: if) = 1")
+            .unwrap_err()
+            .contains("pattern start argument")
+    );
+    assert!(
+        parse("module Main exposing (..)\nf x = case x of\n    y :: if -> 1")
+            .unwrap_err()
+            .contains("pattern start binding")
+    );
 }
 
 #[test]
 fn types_require_adjacent_unit_parentheses_and_indented_delimiters() {
-    for typ in ["( )", "({-comment-})", "(\n    )", "(Int,Int\n)", "(Int\n,Int)", "{\nx:Int}", "{\n}", "{x:Int,\ny:Int}", "{x:Int\n}", "{x\n:Int}"] {
+    for typ in [
+        "( )",
+        "({-comment-})",
+        "(\n    )",
+        "(Int,Int\n)",
+        "(Int\n,Int)",
+        "{\nx:Int}",
+        "{\n}",
+        "{x:Int,\ny:Int}",
+        "{x:Int\n}",
+        "{x\n:Int}",
+    ] {
         let source = format!("module Main exposing (..)\ntype alias T = {typ}");
         assert!(parse(&source).is_err(), "{source}");
     }
@@ -440,11 +475,31 @@ fn types_require_adjacent_unit_parentheses_and_indented_delimiters() {
 
 #[test]
 fn expression_delimiters_require_layout_and_literal_operator_parentheses() {
-    for expression in ["( )", "(\n    )", "( +)", "(+ )", "(1,2\n)", "(1\n,2)", "[\n]", "[1\n]", "{\n}", "{\nx=1}", "{x\n=1}", "{x=1,\ny=2}"] {
+    for expression in [
+        "( )",
+        "(\n    )",
+        "( +)",
+        "(+ )",
+        "(1,2\n)",
+        "(1\n,2)",
+        "[\n]",
+        "[1\n]",
+        "{\n}",
+        "{\nx=1}",
+        "{x\n=1}",
+        "{x=1,\ny=2}",
+    ] {
         let source = format!("module Main exposing (..)\nvalue = {expression}");
         assert!(parse(&source).is_err(), "{source}");
     }
-    for expression in ["()", "(+)", "( -1)", "(1,2\n    )", "[\n    ]", "{x=1,\n    y=2\n    }"] {
+    for expression in [
+        "()",
+        "(+)",
+        "( -1)",
+        "(1,2\n    )",
+        "[\n    ]",
+        "{x=1,\n    y=2\n    }",
+    ] {
         let source = format!("module Main exposing (..)\nvalue = {expression}");
         assert!(parse(&source).is_ok(), "{source}");
     }
@@ -452,7 +507,15 @@ fn expression_delimiters_require_layout_and_literal_operator_parentheses() {
 
 #[test]
 fn control_keywords_and_branch_arrows_require_their_context_indentation() {
-    for expression in ["if True\nthen 1 else 2", "if True then 1\nelse 2", "\\item\n-> item", "case True\nof _ -> 1", "case True of _\n             -> 1", "let\n x = 1 in x", "let x = 1\nin x"] {
+    for expression in [
+        "if True\nthen 1 else 2",
+        "if True then 1\nelse 2",
+        "\\item\n-> item",
+        "case True\nof _ -> 1",
+        "case True of _\n             -> 1",
+        "let\n x = 1 in x",
+        "let x = 1\nin x",
+    ] {
         let source = format!("module Main exposing (..)\nvalue = {expression}");
         assert!(parse(&source).is_err(), "{source}");
     }
@@ -462,17 +525,29 @@ fn control_keywords_and_branch_arrows_require_their_context_indentation() {
 #[test]
 fn declarations_require_indented_names_separators_and_variant_bars() {
     for declaration in [
-        "value\n= 1", "value x\n= x", "value\n: Int\nvalue = 1",
-        "type\nT = T", "type\nalias T = Int", "type alias\nT = Int",
-        "type T a\n= T a", "type alias T a\n= List a", "type T = A\n| B",
-        "port\nsend : Int -> Cmd msg", "port send\n: Int -> Cmd msg",
+        "value\n= 1",
+        "value x\n= x",
+        "value\n: Int\nvalue = 1",
+        "type\nT = T",
+        "type\nalias T = Int",
+        "type alias\nT = Int",
+        "type T a\n= T a",
+        "type alias T a\n= List a",
+        "type T = A\n| B",
+        "port\nsend : Int -> Cmd msg",
+        "port send\n: Int -> Cmd msg",
         "value =\n    let\n        x\n        = 1\n    in x",
         "value =\n    let\n        (x,y)\n        = (1,2)\n    in x",
     ] {
         let source = format!("port module Main exposing (..)\n{declaration}");
         assert!(parse(&source).is_err(), "{source}");
     }
-    for declaration in ["value\n    = 1", "type T = A\n    | B", "type alias\n    T = Int", "value =\n    let\n        (x,y)\n            = (1,2)\n    in x"] {
+    for declaration in [
+        "value\n    = 1",
+        "type T = A\n    | B",
+        "type alias\n    T = Int",
+        "value =\n    let\n        (x,y)\n            = (1,2)\n    in x",
+    ] {
         let source = format!("module Main exposing (..)\n{declaration}");
         assert!(parse(&source).is_ok(), "{source}");
     }
@@ -480,24 +555,56 @@ fn declarations_require_indented_names_separators_and_variant_bars() {
 
 #[test]
 fn local_destructuring_uses_pattern_terms() {
-    for pattern in ["Box x", "Box _", "(x,y) as pair", "{x} as record", "() as unit", "_ :: _"] {
-        let source = format!("module Main exposing (..)\nvalue =\n    let\n        {pattern} = input\n    in 1");
+    for pattern in [
+        "Box x",
+        "Box _",
+        "(x,y) as pair",
+        "{x} as record",
+        "() as unit",
+        "_ :: _",
+    ] {
+        let source = format!(
+            "module Main exposing (..)\nvalue =\n    let\n        {pattern} = input\n    in 1"
+        );
         assert!(parse(&source).is_err(), "{source}");
     }
-    for pattern in ["(Box x)", "((Box x) as box)", "((x,y) as pair)", "({x} as record)", "(() as unit)", "(_ :: _)"] {
-        let source = format!("module Main exposing (..)\nvalue =\n    let\n        {pattern} = input\n    in 1");
+    for pattern in [
+        "(Box x)",
+        "((Box x) as box)",
+        "((x,y) as pair)",
+        "({x} as record)",
+        "(() as unit)",
+        "(_ :: _)",
+    ] {
+        let source = format!(
+            "module Main exposing (..)\nvalue =\n    let\n        {pattern} = input\n    in 1"
+        );
         assert!(parse(&source).is_ok(), "{source}");
     }
-    assert!(parse("module Main exposing (..)\nvalue = case input of\n    Box (Box x) as box -> x").is_ok());
+    assert!(
+        parse("module Main exposing (..)\nvalue = case input of\n    Box (Box x) as box -> x")
+            .is_ok()
+    );
 }
 
 #[test]
 fn control_expressions_terminate_operator_chains() {
-    for prefix in ["", "1 + ", "if True then 1 else ", "let x = 1 in ", "\\x -> "] {
-        let source = format!("module Main exposing (..)\nvalue = {prefix}case True of\n    _ -> 2\n  + 3");
+    for prefix in [
+        "",
+        "1 + ",
+        "if True then 1 else ",
+        "let x = 1 in ",
+        "\\x -> ",
+    ] {
+        let source =
+            format!("module Main exposing (..)\nvalue = {prefix}case True of\n    _ -> 2\n  + 3");
         assert!(parse(&source).is_err(), "{source}");
     }
-    for expression in ["(case True of\n    _ -> 2\n  ) + 3", "1 + (case True of\n    _ -> 2\n  ) + 3", "1 + case True of\n    _ -> 2 + 3"] {
+    for expression in [
+        "(case True of\n    _ -> 2\n  ) + 3",
+        "1 + (case True of\n    _ -> 2\n  ) + 3",
+        "1 + case True of\n    _ -> 2 + 3",
+    ] {
         let source = format!("module Main exposing (..)\nvalue = {expression}");
         assert!(parse(&source).is_ok(), "{source}");
     }
@@ -505,42 +612,75 @@ fn control_expressions_terminate_operator_chains() {
 
 #[test]
 fn earlier_body_errors_survive_later_lexical_failures() {
-    for suffix in ["01", "0x", "\"unfinished", "'ab'", "\"\\u{1}\"", "\t", "{- unclosed"] {
-        for (prefix, expected) in [("Capital = 1\nvalue = ", "declaration start"), ("f _name = ", "pattern wildcard name"), ("f 1.5 = ", "pattern float")] {
+    for suffix in [
+        "01",
+        "0x",
+        "\"unfinished",
+        "'ab'",
+        "\"\\u{1}\"",
+        "\t",
+        "{- unclosed",
+    ] {
+        for (prefix, expected) in [
+            ("Capital = 1\nvalue = ", "declaration start"),
+            ("f _name = ", "pattern wildcard name"),
+            ("f 1.5 = ", "pattern float"),
+        ] {
             let source = format!("module Main exposing (..)\n{prefix}{suffix}");
             let error = parse(&source).unwrap_err();
             assert!(error.contains(expected), "{source}: {error}");
-            assert_eq!(planexpo_elm::parser::parse_with_docs(&source).unwrap_err(), error);
+            assert_eq!(
+                planexpo_elm::parser::parse_with_docs(&source).unwrap_err(),
+                error
+            );
         }
         let source = format!("module Main exposing (..)\nvalue = {suffix}");
-        assert_eq!(parse(&source).unwrap_err(), planexpo_elm::lexer::lex(&source).unwrap_err());
+        assert_eq!(
+            parse(&source).unwrap_err(),
+            planexpo_elm::lexer::lex(&source).unwrap_err()
+        );
     }
 }
 
 #[test]
 fn malformed_literal_boundaries_only_win_when_the_grammar_reads_them() {
     for literal in ["01", "0x", "\"unfinished", "'ab'", "\"\\u{1}\"", "\"\\q\""] {
-        for (prefix, expected) in [("", "declaration start"), ("f {", "pattern record open"), ("f { x,", "pattern record field"), ("f (x as ", "pattern alias name")] {
+        for (prefix, expected) in [
+            ("", "declaration start"),
+            ("f {", "pattern record open"),
+            ("f { x,", "pattern record field"),
+            ("f (x as ", "pattern alias name"),
+        ] {
             let source = format!("module Main exposing (..)\n{prefix}{literal}");
             let error = parse(&source).unwrap_err();
             assert!(error.contains(expected), "{source}: {error}");
         }
         for prefix in ["value = ", "f "] {
             let source = format!("module Main exposing (..)\n{prefix}{literal}");
-            assert_eq!(parse(&source).unwrap_err(), planexpo_elm::lexer::lex(&source).unwrap_err());
+            assert_eq!(
+                parse(&source).unwrap_err(),
+                planexpo_elm::lexer::lex(&source).unwrap_err()
+            );
         }
     }
 }
 
 #[test]
 fn qualified_reserved_words_reach_name_resolution() {
-    for word in ["if", "then", "else", "case", "of", "let", "in", "type", "module", "where", "import", "exposing", "as", "port"] {
+    for word in [
+        "if", "then", "else", "case", "of", "let", "in", "type", "module", "where", "import",
+        "exposing", "as", "port",
+    ] {
         for prefix in ["Basics", "Example.Nested"] {
             let qualified = format!("{prefix}.{word}");
             let source = format!("module Main exposing (..)\nvalue = {qualified}\n");
             let ast = parse(&source).unwrap();
-            let Declaration::Value { body, .. } = ast.declarations[0] else { panic!() };
-            let Expr::Var(name) = ast.expressions[body.0 as usize].kind else { panic!() };
+            let Declaration::Value { body, .. } = ast.declarations[0] else {
+                panic!()
+            };
+            let Expr::Var(name) = ast.expressions[body.0 as usize].kind else {
+                panic!()
+            };
             assert_eq!(name, qualified);
         }
         assert!(parse(&format!("module Main exposing (..)\n{word} = 1\n")).is_err());
@@ -549,7 +689,24 @@ fn qualified_reserved_words_reach_name_resolution() {
 
 #[test]
 fn incomplete_expressions_at_eof_reject_without_panicking() {
-    for fragment in ["(", "[", "{", "(1", "[1", "{ x = 1", "if", "if True", "if True then", "if True then 1 else", "case", "case 1 of", "case 1 of _", "let", "let x = 1", "\\x ->"] {
+    for fragment in [
+        "(",
+        "[",
+        "{",
+        "(1",
+        "[1",
+        "{ x = 1",
+        "if",
+        "if True",
+        "if True then",
+        "if True then 1 else",
+        "case",
+        "case 1 of",
+        "case 1 of _",
+        "let",
+        "let x = 1",
+        "\\x ->",
+    ] {
         for suffix in ["", " ", "\n", "\n    ", " {- comment -}"] {
             let source = format!("module Main exposing (..)\nvalue = {fragment}{suffix}");
             assert!(parse(&source).is_err(), "unexpectedly accepted: {source}");
@@ -557,18 +714,74 @@ fn incomplete_expressions_at_eof_reject_without_panicking() {
     }
 }
 
-
 #[test]
 fn unary_minus_before_record_accessor_preserves_operator_functions_and_spans() {
     let source = "module Main exposing (..)\nvalue = -.name\noperator = (-.)\n";
     let ast = parse(source).unwrap();
-    let Declaration::Value { body, .. } = ast.declarations[0] else { panic!() };
-    let Expr::Negate(inner) = ast.expressions[body.0 as usize].kind else { panic!() };
+    let Declaration::Value { body, .. } = ast.declarations[0] else {
+        panic!()
+    };
+    let Expr::Negate(inner) = ast.expressions[body.0 as usize].kind else {
+        panic!()
+    };
     let accessor = &ast.expressions[inner.0 as usize];
     assert!(matches!(accessor.kind, Expr::Accessor("name")));
-    assert_eq!(&source[accessor.span.start as usize..accessor.span.end as usize], ".name");
+    assert_eq!(
+        &source[accessor.span.start as usize..accessor.span.end as usize],
+        ".name"
+    );
     let negation = &ast.expressions[body.0 as usize];
-    assert_eq!(&source[negation.span.start as usize..negation.span.end as usize], "-.name");
-    let Declaration::Value { body, .. } = ast.declarations[1] else { panic!() };
-    assert!(matches!(ast.expressions[body.0 as usize].kind, Expr::Operator("-.")));
+    assert_eq!(
+        &source[negation.span.start as usize..negation.span.end as usize],
+        "-.name"
+    );
+    let Declaration::Value { body, .. } = ast.declarations[1] else {
+        panic!()
+    };
+    assert!(matches!(
+        ast.expressions[body.0 as usize].kind,
+        Expr::Operator("-.")
+    ));
+}
+
+#[test]
+fn call_region_excludes_grouping_parentheses_outside_its_expressions() {
+    let source = "module Main exposing (..)\nx = (f) (\n    1\n    )\n";
+    let ast = parse(source).unwrap();
+    let Declaration::Value { body, .. } = ast.declarations[0] else {
+        panic!()
+    };
+    let call = &ast.expressions[body.0 as usize];
+    assert!(matches!(call.kind, Expr::Call(_, _)));
+    assert_eq!(
+        &source[call.span.start as usize..call.span.end as usize],
+        "f) (\n    1"
+    );
+}
+
+#[test]
+fn unparenthesized_literals_and_lists_do_not_take_record_access_suffixes() {
+    for expression in ["\"a\".name", "'a'.name", "[].name"] {
+        let source = format!("x = {expression}");
+        let ast = parse(&source).unwrap();
+        let Declaration::Value { body, .. } = ast.declarations[0] else {
+            panic!()
+        };
+        let Expr::Call(_, ref args) = ast.expressions[body.0 as usize].kind else {
+            panic!("{expression}")
+        };
+        assert_eq!(args.len(), 1);
+        assert!(matches!(
+            ast.expressions[args[0].0 as usize].kind,
+            Expr::Accessor("name")
+        ));
+    }
+    let ast = parse("x = (\"a\").name").unwrap();
+    let Declaration::Value { body, .. } = ast.declarations[0] else {
+        panic!()
+    };
+    assert!(matches!(
+        ast.expressions[body.0 as usize].kind,
+        Expr::Access(_, "name")
+    ));
 }

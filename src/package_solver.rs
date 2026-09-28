@@ -80,29 +80,63 @@ impl std::fmt::Display for Constraint {
 }
 
 pub fn valid_name(name: &str) -> bool {
-    let Some((author, project)) = name.split_once('/') else {
-        return false;
-    };
-    fn component(text: &str, author: bool) -> bool {
-        let good_inner = |c: u8| {
+    name_error_offset(name).is_none()
+}
+
+/// Byte position reported by Elm.Package.parser, including the author/project
+/// asymmetry: a dash before the slash terminates a valid author component.
+pub(crate) fn name_error_offset(name: &str) -> Option<usize> {
+    fn component(bytes: &[u8], start: usize, author: bool) -> Result<usize, usize> {
+        let good = |byte: u8| {
             if author {
-                c.is_ascii_alphanumeric()
+                byte.is_ascii_alphanumeric()
             } else {
-                c.is_ascii_lowercase() || c.is_ascii_digit()
+                byte.is_ascii_lowercase() || byte.is_ascii_digit()
             }
         };
-        !text.is_empty()
-            && text.len() < 256
-            && if author {
-                text.as_bytes()[0].is_ascii_alphanumeric()
+        let Some(&first) = bytes.get(start) else {
+            return Err(start);
+        };
+        if !(if author {
+            first.is_ascii_alphanumeric()
+        } else {
+            first.is_ascii_lowercase()
+        }) {
+            return Err(start);
+        }
+        let mut cursor = start + 1;
+        let mut dash = false;
+        while let Some(&byte) = bytes.get(cursor) {
+            if good(byte) {
+                dash = false;
+            } else if byte == b'-' {
+                if dash {
+                    return Err(cursor);
+                }
+                dash = true;
             } else {
-                text.as_bytes()[0].is_ascii_lowercase()
+                break;
             }
-            && !text.ends_with('-')
-            && !text.contains("--")
-            && text.bytes().all(|c| good_inner(c) || c == b'-')
+            cursor += 1;
+        }
+        if (cursor == bytes.len() && dash) || cursor - start >= 256 {
+            Err(cursor)
+        } else {
+            Ok(cursor)
+        }
     }
-    component(author, true) && component(project, false)
+    let bytes = name.as_bytes();
+    let author = match component(bytes, 0, true) {
+        Ok(end) => end,
+        Err(at) => return Some(at),
+    };
+    if bytes.get(author) != Some(&b'/') {
+        return Some(author);
+    }
+    match component(bytes, author + 1, false) {
+        Ok(end) if end == bytes.len() => None,
+        Ok(end) | Err(end) => Some(end),
+    }
 }
 
 type Requirements = BTreeMap<String, Vec<Constraint>>;

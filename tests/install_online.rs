@@ -66,7 +66,16 @@ fn server(failure: &str) -> (String, thread::JoinHandle<()>) {
         ),
     ];
     if failure != "endpoint" {
-        responses.push(("GET", "/archive.zip", 200, archive));
+        responses.push((
+            "GET",
+            "/archive.zip",
+            if failure == "archive-status" {
+                403
+            } else {
+                200
+            },
+            archive,
+        ));
     }
     let handle = thread::spawn(move || {
         for (method, path, status, body) in responses {
@@ -83,6 +92,8 @@ fn server(failure: &str) -> (String, thread::JoinHandle<()>) {
                     Err(e) => panic!("missing request {method} {path}: {e}"),
                 }
             };
+            // Windows inherits the listener nonblocking mode on accepted sockets.
+            stream.set_nonblocking(false).unwrap();
             stream
                 .set_read_timeout(Some(Duration::from_secs(5)))
                 .unwrap();
@@ -111,7 +122,7 @@ fn server(failure: &str) -> (String, thread::JoinHandle<()>) {
 
 #[test]
 fn online_installation_verifies_archives_before_changing_the_project() {
-    for failure in ["", "hash", "endpoint", "invalid-archive"] {
+    for failure in ["", "hash", "endpoint", "archive-status", "invalid-archive"] {
         let home = tempfile::tempdir().unwrap();
         let project = tempfile::tempdir().unwrap();
         for name in ["elm/core", "elm/json"] {
@@ -152,12 +163,51 @@ fn online_installation_verifies_archives_before_changing_the_project() {
         } else {
             let error = result.expect_err(failure);
             let expected = match failure {
-                "hash" => "package archive hash mismatch",
+                "hash" => "CORRUPT PACKAGE DATA",
                 "endpoint" => "503",
-                "invalid-archive" => "invalid package archive",
+                "archive-status" => "403",
+                "invalid-archive" => "unable to unzip",
                 _ => unreachable!(),
             };
             assert!(error.contains(expected), "{failure}: {error}");
+            if matches!(failure, "endpoint" | "archive-status") {
+                let report = planexpo_elm::dependency_error::report_encoded(&error)
+                    .expect("HTTP failures must have a structured download report");
+                assert_eq!(report["title"], "PROBLEM DOWNLOADING PACKAGE");
+                assert_eq!(report["path"], serde_json::Value::Null);
+                let context = if failure == "endpoint" {
+                    "I need to find the latest download link for author/new 1.0.0, so I tried to\nfetch:"
+                } else {
+                    "I was trying to download the source code for author/new 1.0.0, so I tried to\nfetch:"
+                };
+                assert_eq!(report["message"][0], format!("{context}\n\n    "));
+                assert_eq!(
+                    report["message"][1]["string"],
+                    format!(
+                        "{url}{}",
+                        if failure == "endpoint" {
+                            "/packages/author/new/1.0.0/endpoint.json"
+                        } else {
+                            "/archive.zip"
+                        }
+                    )
+                );
+                assert_eq!(report["message"][2], "\n\nBut it came back as ");
+                assert_eq!(
+                    report["message"][3],
+                    json!({"bold":false,"underline":false,"color":"RED","string":expected})
+                );
+                assert!(
+                    report["message"][4]
+                        .as_str()
+                        .unwrap()
+                        .starts_with(" Test\n\nThis may mean some online endpoint changed")
+                );
+            }
+            if failure == "hash" {
+                let report = planexpo_elm::dependency_error::report_encoded(&error).unwrap();
+                assert_eq!(report["title"], "CORRUPT PACKAGE DATA");
+            }
             assert_eq!(fs::read_to_string(&path).unwrap(), original);
             assert!(!package.join("src").exists());
             assert_eq!(

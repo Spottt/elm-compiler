@@ -2,13 +2,13 @@
 use crate::module::{Exposed, Exposing, Header};
 use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Import {
     prefix: String,
     exposed: Option<BTreeSet<String>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone)]
 pub struct Localizer {
     imports: BTreeMap<String, Import>,
 }

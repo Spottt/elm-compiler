@@ -8,10 +8,10 @@ impl Engine {
     pub fn is_closed_scheme(&mut self, scheme: &Scheme) -> bool {
         let quantified: BTreeSet<_> = scheme.quantified.iter().map(|ty| self.find(*ty)).collect();
         let mut pending = vec![scheme.root];
-        let mut seen = BTreeSet::new();
+        self.visits.begin(self.nodes.len());
         while let Some(ty) = pending.pop() {
             let ty = self.find(ty);
-            if !seen.insert(ty) {
+            if !self.visits.insert(ty) {
                 continue;
             }
             match &self.nodes[ty.0 as usize].descriptor {
@@ -75,7 +75,7 @@ impl Engine {
                         "record",
                         fields
                             .iter()
-                            .map(|(name, ty)| (name.clone(), index(*ty)))
+                            .map(|(name, ty)| (name.as_ref(), index(*ty)))
                             .collect::<BTreeMap<_, _>>(),
                         extension.map(&mut index)
                     ]),
@@ -84,17 +84,27 @@ impl Engine {
             nodes.push(node);
         }
         let roots: Vec<_> = roots.iter().map(|ty| ids[&self.find(*ty)]).collect();
-        let mut artifact = json!({"version":1,"nodes":nodes,"roots":roots});
+        // json! serializes borrowed values, deep-copying a Value graph. Transfer
+        // the already-built node array instead; debug metadata reads it below.
+        let mut artifact = json!({"version":1,"roots":roots});
+        artifact["nodes"] = Value::Array(nodes);
         if let Some(names) = &self.display_names {
             let names: BTreeMap<_, _> = names
                 .iter()
                 .filter_map(|(ty, name)| {
                     ids.get(ty)
-                        .filter(|id| matches!(nodes[**id][0].as_str(), Some("variable" | "rigid")))
+                        .filter(|id| matches!(artifact["nodes"][**id][0].as_str(), Some("variable" | "rigid")))
                         .map(|id| (id.to_string(), name.clone()))
                 })
                 .collect();
             artifact["variable_names"] = json!(names);
+        }
+        if let Some(orders) = &self.debug_field_order {
+            let orders: BTreeMap<_, _> = orders
+                .iter()
+                .filter_map(|(ty, order)| ids.get(ty).map(|id| (id.to_string(), order)))
+                .collect();
+            artifact["record_field_order"] = json!(orders);
         }
         Ok(artifact)
     }
@@ -134,8 +144,10 @@ impl Engine {
                 .collect()
         };
         let roots = indices(artifact.get("roots").ok_or_else(invalid)?)?;
+        // One allocation per distinct field name in this artifact. The table
+        // borrows JSON keys only during validation; retained names own their text.
+        let mut field_names: HashMap<&str, Rc<str>> = HashMap::new();
         let mut descriptors = Vec::with_capacity(nodes.len());
-        let mut edges = Vec::with_capacity(nodes.len());
         for node in nodes {
             let parts = node.as_array().ok_or_else(invalid)?;
             let tag = parts.first().and_then(Value::as_str).ok_or_else(invalid)?;
@@ -177,7 +189,7 @@ impl Engine {
                                 .as_object()
                                 .ok_or_else(invalid)?
                                 .iter()
-                                .map(|(name, value)| Ok((name.clone(), index(value)?)))
+                                .map(|(name, value)| Ok((field_names.entry(name.as_str()).or_insert_with(|| name.as_str().into()).clone(), index(value)?)))
                                 .collect::<Result<_, String>>()?,
                             extension: if parts[2].is_null() {
                                 None
@@ -190,17 +202,20 @@ impl Engine {
                     Descriptor::Structure(Rc::new(term))
                 }
             };
-            edges.push(match &descriptor {
-                Descriptor::Structure(term) => Self::children(term),
-                _ => vec![],
-            });
             descriptors.push(descriptor);
         }
         // Iterative DFS rejects cycles even in unreachable nodes. The flat format
         // and this traversal also support deeply nested valid types safely.
         let mut colors = vec![0u8; nodes.len()];
+        // The validated descriptors already contain every edge. Traverse them
+        // directly and reuse one stack instead of allocating adjacency lists
+        // and a new DFS stack for every cached type node.
+        let mut pending = Vec::new();
         for root in 0..nodes.len() {
-            let mut pending = vec![(root, false)];
+            if colors[root] == 2 {
+                continue;
+            }
+            pending.push((root, false));
             while let Some((node, finish)) = pending.pop() {
                 if finish {
                     colors[node] = 2;
@@ -213,15 +228,14 @@ impl Engine {
                 }
                 colors[node] = 1;
                 pending.push((node, true));
-                pending.extend(
-                    edges[node]
-                        .iter()
-                        .rev()
-                        .map(|child| (child.0 as usize, false)),
-                );
+                if let Descriptor::Structure(term) = &descriptors[node] {
+                    pending.extend(
+                        Self::children(term).rev().map(|child| (child.0 as usize, false)),
+                    );
+                }
             }
         }
-        drop(edges);
+        drop(pending);
         drop(colors);
         // Validate optional REPL metadata before mutating the destination.
         let mut display_names = BTreeMap::new();
@@ -239,6 +253,26 @@ impl Engine {
                     return Err(invalid());
                 }
                 display_names.insert(Ty(offset + id as u32), name.to_string());
+            }
+        }
+        let mut field_orders = BTreeMap::new();
+        if let Some(orders) = artifact.get("record_field_order") {
+            for (id, order) in orders.as_object().ok_or_else(invalid)? {
+                let id: usize = id.parse().map_err(|_| invalid())?;
+                let order: Vec<String> =
+                    serde_json::from_value(order.clone()).map_err(|_| invalid())?;
+                let Some(Descriptor::Structure(term)) = descriptors.get(id) else {
+                    return Err(invalid());
+                };
+                let Term::Record { fields, .. } = &**term else {
+                    return Err(invalid());
+                };
+                if order.len() != fields.len()
+                    || order.iter().map(String::as_str).collect::<BTreeSet<_>>() != fields.keys().map(|name| name.as_ref()).collect()
+                {
+                    return Err(invalid());
+                }
+                field_orders.insert(Ty(offset + id as u32), order);
             }
         }
         let remap = |ty: Ty| Ty(offset + ty.0);
@@ -279,6 +313,9 @@ impl Engine {
         }
         if let Some(names) = &mut self.display_names {
             names.extend(display_names);
+        }
+        if let Some(orders) = &mut self.debug_field_order {
+            orders.extend(field_orders);
         }
         Ok(roots.into_iter().map(remap).collect())
     }

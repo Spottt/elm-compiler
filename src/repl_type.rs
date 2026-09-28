@@ -5,19 +5,92 @@ use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
 pub fn render(graph: &Value, root: usize, names: &Localizer) -> Result<String, String> {
+    render_width(graph, root, names, 80)
+}
+
+pub(crate) fn render_width(
+    graph: &Value,
+    root: usize,
+    names: &Localizer,
+    width: usize,
+) -> Result<String, String> {
+    document(graph, root, names).map(|doc| doc.render(width))
+}
+
+pub(crate) fn document(graph: &Value, root: usize, names: &Localizer) -> Result<Doc, String> {
     let nodes = graph["nodes"].as_array().ok_or("missing type nodes")?;
     let root = index(&graph["roots"][root])?;
     let (variables, taken) = source_names(graph, nodes, root)?;
     Renderer {
         nodes,
+        field_orders: &graph["record_field_order"],
         names,
         variables,
         taken,
         counts: BTreeMap::new(),
         active: BTreeSet::new(),
+        highlights: None,
+        expansions: None,
+        path: Vec::new(),
+        counters: Vec::new(),
     }
     .node(root, 0)
-    .map(|doc| doc.render(80))
+}
+
+/// Render related field types with names allocated in their complete record.
+pub(crate) fn record_documents(
+    graph: &Value,
+    context: usize,
+    names: &Localizer,
+) -> Result<Vec<Doc>, String> {
+    let nodes = graph["nodes"].as_array().ok_or("missing type nodes")?;
+    let root = index(&graph["roots"][context])?;
+    let (variables, taken) = source_names(graph, nodes, root)?;
+    let mut renderer = Renderer {
+        nodes,
+        field_orders: &graph["record_field_order"],
+        names,
+        variables,
+        taken,
+        counts: BTreeMap::new(),
+        active: BTreeSet::new(),
+        highlights: None,
+        expansions: None,
+        path: Vec::new(),
+        counters: Vec::new(),
+    };
+    renderer.node(root, 0)?;
+    (0..context)
+        .map(|i| renderer.node(index(&graph["roots"][i])?, 0))
+        .collect()
+}
+
+pub(crate) fn render_highlighted(
+    graph: &Value,
+    root: usize,
+    names: &Localizer,
+    highlights: &BTreeSet<Vec<usize>>,
+    width: usize,
+    expansions: &BTreeMap<Vec<usize>, usize>,
+) -> Result<Vec<(String, bool)>, String> {
+    let nodes = graph["nodes"].as_array().ok_or("missing type nodes")?;
+    let root = index(&graph["roots"][root])?;
+    let (variables, taken) = source_names(graph, nodes, root)?;
+    Renderer {
+        nodes,
+        field_orders: &graph["record_field_order"],
+        names,
+        variables,
+        taken,
+        counts: BTreeMap::new(),
+        active: BTreeSet::new(),
+        highlights: Some(highlights),
+        expansions: Some(expansions),
+        path: Vec::new(),
+        counters: Vec::new(),
+    }
+    .node(root, 0)
+    .map(|doc| doc.render_spans(width))
 }
 
 // Elm reserves existing names in reverse child order before allocating fresh
@@ -76,21 +149,58 @@ fn index(value: &Value) -> Result<usize, String> {
 
 struct Renderer<'a> {
     nodes: &'a [Value],
+    field_orders: &'a Value,
     names: &'a Localizer,
     variables: BTreeMap<usize, String>,
     counts: BTreeMap<String, usize>,
     taken: BTreeSet<String>,
     active: BTreeSet<usize>,
+    highlights: Option<&'a BTreeSet<Vec<usize>>>,
+    expansions: Option<&'a BTreeMap<Vec<usize>, usize>>,
+    path: Vec<usize>,
+    counters: Vec<usize>,
 }
 
 impl Renderer<'_> {
     // Precedence: function 0, named application 1, atom 2.
     fn node(&mut self, id: usize, context: u8) -> Result<Doc, String> {
+        if self.highlights.is_none() {
+            return self.node_inner(id, context);
+        }
+        let nested = !self.counters.is_empty();
+        if let Some(counter) = self.counters.last_mut() {
+            self.path.push(*counter);
+            *counter += 1;
+        }
+        self.counters.push(0);
+        let id = self
+            .expansions
+            .and_then(|paths| paths.get(&self.path))
+            .copied()
+            .unwrap_or(id);
+        let result = self.node_inner(id, context).map(|doc| {
+            if self
+                .highlights
+                .is_some_and(|paths| paths.contains(&self.path))
+            {
+                Doc::Highlight(Box::new(doc))
+            } else {
+                doc
+            }
+        });
+        self.counters.pop();
+        if nested {
+            self.path.pop();
+        }
+        result
+    }
+    fn node_inner(&mut self, id: usize, context: u8) -> Result<Doc, String> {
         if self.active.len() >= 1024 || !self.active.insert(id) {
             return Err("recursive or excessively deep REPL type".into());
         }
         let node = self.nodes.get(id).ok_or("missing type node")?;
         let (text, precedence) = match node[0].as_str().ok_or("missing type node tag")? {
+            "infinite" => (Doc::text("∞"), 3),
             "variable" | "rigid" => {
                 let constraint = node[2].as_str().ok_or("missing type constraint")?;
                 if !["any", "number", "comparable", "appendable", "compappend"]
@@ -184,7 +294,15 @@ impl Renderer<'_> {
                     serde_json::from_str(node[1].as_str().ok_or("invalid type name")?)
                         .map_err(|e| e.to_string())?;
                 let args = node[2].as_array().ok_or("invalid type arguments")?;
-                let mut parts = vec![Doc::text(self.names.name(&module, &name))];
+                let mut head = Doc::text(self.names.name(&module, &name));
+                if self.highlights.is_some_and(|paths| {
+                    let mut path = self.path.clone();
+                    path.push(usize::MAX);
+                    paths.contains(&path)
+                }) {
+                    head = Doc::Highlight(Box::new(head));
+                }
+                let mut parts = vec![head];
                 for arg in args {
                     parts.push(self.node(index(arg)?, 2)?);
                 }
@@ -192,6 +310,7 @@ impl Renderer<'_> {
             }
             "record" => {
                 let mut fields = BTreeMap::new();
+                let mut order = Vec::new();
                 let mut row = id;
                 let mut seen = BTreeSet::new();
                 let extension = loop {
@@ -206,6 +325,9 @@ impl Renderer<'_> {
                     if record[0] != "record" {
                         break Some(row);
                     }
+                    if let Some(names) = self.field_orders[row.to_string()].as_array() {
+                        order.extend(names.iter().filter_map(Value::as_str).map(str::to_string));
+                    }
                     for (name, value) in record[1].as_object().ok_or("invalid record fields")? {
                         fields.insert(name.clone(), index(value)?);
                     }
@@ -214,13 +336,30 @@ impl Renderer<'_> {
                     }
                     row = index(&record[2])?;
                 };
-                let fields = fields
+                let mut ordered = Vec::new();
+                for name in order {
+                    if let Some(id) = fields.remove(&name) {
+                        ordered.push((name, id));
+                    }
+                }
+                ordered.extend(fields);
+                let fields = ordered
                     .into_iter()
-                    .map(|(name, id)| {
-                        Ok(
-                            Doc::sep(vec![Doc::text(format!("{name} :")), self.node(id, 0)?])
-                                .hang(4),
-                        )
+                    .enumerate()
+                    .map(|(index, (name, id))| {
+                        let mut name = Doc::text(name);
+                        if self.highlights.is_some_and(|paths| {
+                            let mut path = self.path.clone();
+                            path.extend([usize::MAX, index]);
+                            paths.contains(&path)
+                        }) {
+                            name = Doc::Highlight(Box::new(name));
+                        }
+                        Ok(Doc::sep(vec![
+                            Doc::concat(vec![name, Doc::text(" :")]),
+                            self.node(id, 0)?,
+                        ])
+                        .hang(4))
                     })
                     .collect::<Result<Vec<_>, String>>()?;
                 let text = match extension {

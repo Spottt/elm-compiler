@@ -713,7 +713,15 @@ impl<'s> Parser<'s> {
         if args.is_empty() {
             Ok(first)
         } else {
-            Ok(self.e(start, Expr::Call(first, args)))
+            // Elm merges the function and last argument's expression regions;
+            // grouping parentheses are consumed but do not extend that region.
+            let span = Span {
+                start: self.ast.expressions[first.0 as usize].span.start,
+                end: self.ast.expressions[args.last().unwrap().0 as usize].span.end,
+            };
+            let call = self.e(start, Expr::Call(first, args));
+            self.ast.expressions[call.0 as usize].span = span;
+            Ok(call)
         }
     }
     fn atom(&mut self, floor: u32) -> Result<ExprId, String> {
@@ -868,8 +876,9 @@ impl<'s> Parser<'s> {
             }
             _ => return Err(self.error("expected expression")),
         };
+        let accessible = matches!(kind, Expr::Var(_) | Expr::Record { .. } | Expr::Tuple(_) | Expr::Unit);
         let expr = self.e(start, kind);
-        self.access(start, expr)
+        if accessible { self.access(start, expr) } else { Ok(expr) }
     }
     fn access_field(&mut self) -> Result<&'s str, String> {
         let dot = &self.tokens[self.pos - 1];
@@ -1090,8 +1099,15 @@ impl<'s> Parser<'s> {
     }
 }
 pub fn parse(source: &str) -> Result<Syntax<'_>, String> {
-    let tokens = lex(source).map_err(|error| lexical_error(source, error))?;
-    parse_tokens(source, tokens, None, None, false)
+    let result = lex(source).map_err(|error| lexical_error(source, error))
+        .and_then(|tokens| parse_tokens(source, tokens, None, None, false));
+    crate::session_cache::remember_syntax(source, result.as_ref().map(|_| ()).map_err(Clone::clone));
+    result
+}
+
+/// Syntax-only error collection can reuse an earlier full parse of these bytes.
+pub(crate) fn check_syntax(source: &str) -> Result<(), String> {
+    crate::session_cache::syntax(source).unwrap_or_else(|| parse(source).map(|_| ()))
 }
 
 /// Parse a REPL candidate, allowing imports without a body and an annotation

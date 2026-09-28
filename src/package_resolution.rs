@@ -7,6 +7,15 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, fs, io::Write, path::Path};
 
+pub struct DownloadResolution {
+    pub selected: BTreeMap<String, String>,
+    pub failures: BTreeMap<String, String>,
+}
+
+pub fn resolve_for_build(manifest: &Path, home: &Path) -> Result<DownloadResolution, String> {
+    resolve_downloads_with(manifest, home, || PackageNetwork::new(PACKAGE_SERVER))
+}
+
 pub fn resolve(manifest: &Path, home: &Path) -> Result<BTreeMap<String, String>, String> {
     resolve_with(manifest, home, || PackageNetwork::new(PACKAGE_SERVER))
 }
@@ -15,6 +24,18 @@ pub fn resolve_with(
     home: &Path,
     network: impl FnOnce() -> Result<PackageNetwork, String>,
 ) -> Result<BTreeMap<String, String>, String> {
+    let result = resolve_downloads_with(manifest, home, network)?;
+    match result.failures.into_values().next() {
+        Some(error) => Err(error),
+        None => Ok(result.selected),
+    }
+}
+
+pub fn resolve_downloads_with(
+    manifest: &Path,
+    home: &Path,
+    network: impl FnOnce() -> Result<PackageNetwork, String>,
+) -> Result<DownloadResolution, String> {
     let source = fs::read(manifest).map_err(|e| e.to_string())?;
     let config = crate::outline::decode(std::str::from_utf8(&source).map_err(|e| e.to_string())?)?;
     let application = validate_project(&config);
@@ -63,7 +84,10 @@ pub fn resolve_with(
         && let Ok(fingerprint) = metadata_fingerprint(&home, &selected)
         && saved["metadata"] == fingerprint
     {
-        return Ok(selected);
+        return Ok(DownloadResolution {
+            selected,
+            failures: BTreeMap::new(),
+        });
     }
     let network = network()?;
     let state = network.registry(&home)?;
@@ -83,8 +107,14 @@ pub fn resolve_with(
     } else {
         package_solver::solve(&home, &config["dependencies"], &config["test-dependencies"])?
     };
+    let mut failures = BTreeMap::new();
     for (name, version) in &selected {
-        network.package(&home, name, package_solver::Version::parse(version)?)?;
+        if let Err(error) = network.package(&home, name, package_solver::Version::parse(version)?) {
+            failures.insert(name.clone(), error);
+        }
+    }
+    if !failures.is_empty() {
+        return Ok(DownloadResolution { selected, failures });
     }
     let metadata = metadata_fingerprint(&home, &selected)?;
     let bytes = serde_json::to_vec(&json!({"key":key,"selected":selected,"metadata":metadata}))
@@ -93,7 +123,7 @@ pub fn resolve_with(
     temp.write_all(&bytes).map_err(|e| e.to_string())?;
     temp.as_file().sync_all().map_err(|e| e.to_string())?;
     temp.persist(path).map_err(|e| e.to_string())?;
-    Ok(selected)
+    Ok(DownloadResolution { selected, failures })
 }
 fn metadata_fingerprint(home: &Path, selected: &BTreeMap<String, String>) -> Result<Value, String> {
     let mut fingerprints = BTreeMap::new();

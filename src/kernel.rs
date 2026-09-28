@@ -122,6 +122,7 @@ pub fn parse(source: &str) -> Result<Content<'_>, String> {
 pub enum Mode {
     #[default]
     Development,
+    Debug,
     Production,
 }
 /// Render a kernel template through the linker's shared naming tables. Elm
@@ -149,7 +150,7 @@ pub fn render(
             Chunk::JsField(index) => output.push_str(&js_field(*index)),
             Chunk::JsEnum(index) => output.push_str(&index.to_string()),
             Chunk::Debug if matches!(mode, Mode::Production) => output.push_str("_UNUSED"),
-            Chunk::Prod if matches!(mode, Mode::Development) => output.push_str("_UNUSED"),
+            Chunk::Prod if !matches!(mode, Mode::Production) => output.push_str("_UNUSED"),
             Chunk::Debug | Chunk::Prod => {}
         }
     }

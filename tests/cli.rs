@@ -8,14 +8,24 @@ fn cli(args: &[&str]) -> Output {
 }
 
 #[test]
-fn identifies_its_own_version_and_documents_make() {
+fn identifies_elm_compatibility_and_its_own_version_and_documents_make() {
     let result = cli(&["--version"]);
+    assert!(result.status.success());
+    assert_eq!(String::from_utf8(result.stdout).unwrap().trim(), "0.19.1");
+    let result = cli(&["--compiler-version"]);
     assert!(result.status.success());
     assert_eq!(
         String::from_utf8(result.stdout).unwrap().trim(),
         env!("CARGO_PKG_VERSION")
     );
     let result = cli(&["--help"]);
+    assert!(result.status.success());
+    assert!(
+        String::from_utf8(result.stderr)
+            .unwrap()
+            .contains("elm make")
+    );
+    let result = cli(&["--compiler-help"]);
     assert!(result.status.success());
     assert!(
         String::from_utf8(result.stdout)
@@ -25,8 +35,9 @@ fn identifies_its_own_version_and_documents_make() {
 }
 
 #[test]
-fn invalid_invocations_fail_with_machine_readable_errors() {
+fn invalid_invocations_use_cli_or_compiler_diagnostics_as_appropriate() {
     for args in [
+        vec!["make", "--report", "--optimize", "json"],
         vec!["make", "Main.elm", "--debug", "--report=json"],
         vec!["make", "Main.elm", "--output=out.txt", "--report", "json"],
         vec![
@@ -48,6 +59,19 @@ fn invalid_invocations_fail_with_machine_readable_errors() {
         let result = cli(&args);
         assert!(!result.status.success(), "{args:?}");
         assert!(result.stdout.is_empty());
+        if args.contains(&"--output=out.txt")
+            || args.contains(&"--output")
+            || args.contains(&"--output=b.js")
+        {
+            let stderr = String::from_utf8(result.stderr).unwrap();
+            assert!(
+                stderr.starts_with("This flag ")
+                    || stderr.starts_with("I do not recognize this flag:"),
+                "{stderr}"
+            );
+            assert!(stderr.contains("<output-file>"));
+            continue;
+        }
         let error: serde_json::Value = serde_json::from_slice(&result.stderr).unwrap();
         assert_eq!(error["type"], "error");
         assert!(!error["message"][0].as_str().unwrap().is_empty());
@@ -66,14 +90,18 @@ fn source_errors_have_a_file_and_real_region_in_json() {
     std::fs::remove_dir_all(&directory).unwrap();
     assert!(!result.status.success());
     assert_eq!(error["type"], "compile-errors");
+    assert_eq!(
+        error["errors"][0]["problems"][0]["title"],
+        "UNFINISHED DEFINITION"
+    );
     assert_eq!(error["errors"][0]["path"], path.to_str().unwrap());
     assert_eq!(error["errors"][0]["name"], "Main");
     assert_eq!(
         error["errors"][0]["problems"][0]["region"]["start"]["line"],
-        3
+        2
     );
     assert_eq!(
         error["errors"][0]["problems"][0]["region"]["start"]["column"],
-        1
+        6
     );
 }

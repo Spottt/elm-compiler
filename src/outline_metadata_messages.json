@@ -1,0 +1,81 @@
+{
+  "SUMMARY TOO LONG": [
+    "\nI need it to be ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "GREEN",
+      "string": "under"
+    },
+    " ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "GREEN",
+      "string": "80"
+    },
+    " ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "GREEN",
+      "string": "bytes"
+    },
+    " so it renders nicely on the package website!\n\n",
+    {
+      "bold": false,
+      "underline": true,
+      "color": null,
+      "string": "Note"
+    },
+    ": I count the length in bytes, so using non-ASCII characters costs extra.\nPlease report your case at https://github.com/elm/compiler/issues if this seems\noverly restrictive for your needs."
+  ],
+  "UNKNOWN LICENSE": [
+    "\nElm packages generally use ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "GREEN",
+      "string": "\"BSD-3-Clause\""
+    },
+    " or ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "GREEN",
+      "string": "\"MIT\""
+    },
+    ", but I accept any OSI\napproved SPDX license. Here some that seem close to what you wrote:\n\n    ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "MIT\n    AAL\n    Fair\n    IPA"
+    },
+    "\n\nCheck out https://spdx.org/licenses/ for the full list of options."
+  ],
+  "INVALID PACKAGE NAME": [
+    "\nPackage names are always written as ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "GREEN",
+      "string": "\"author/project\""
+    },
+    " so I am expecting to see\nsomething like:\n\n",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "    \"mdgriffith/elm-ui\"\n    \"w0rm/elm-physics\"\n    \"Microsoft/elm-json-tree-view\"\n    \"FordLabs/elm-star-rating\"\n    \"1602/json-schema\""
+    },
+    "\n\nThe author name should match your GitHub name exactly, and the project name\nneeds to follow these rules:\n\n    +--------------------------------------+-----------+-----------+\n    | RULE                                 | BAD       | GOOD      |\n    +--------------------------------------+-----------+-----------+\n    | only lower case, digits, and hyphens | elm-HTTP  | elm-http  |\n    | no leading digits                    | 3D        | elm-3d    |\n    | no non-ASCII characters              | elm-bjørn | elm-bear  |\n    | no underscores                       | elm_ui    | elm-ui    |\n    | no double hyphens                    | elm--hash | elm-hash  |\n    | no starting or ending hyphen         | -elm-tar- | elm-tar   |\n    +--------------------------------------+-----------+-----------+\n\n",
+    {
+      "bold": false,
+      "underline": true,
+      "color": null,
+      "string": "Note"
+    },
+    ": These rules only apply to the project name, so you should never need to\nchange your GitHub name!"
+  ]
+}

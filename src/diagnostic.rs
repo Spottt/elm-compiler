@@ -9,6 +9,11 @@ use std::{
 
 const REPL_PREFIX: &str = "ELM_REPL_ERROR:";
 pub fn repl_error(entry: &Path, message: String) -> String {
+    // Complete CLI documents are not source diagnostics. Keep their envelope
+    // intact so main prints the document without exposing the internal marker.
+    if message.starts_with("ELM_CLI_RAW:") {
+        return message;
+    }
     format!(
         "{REPL_PREFIX}{}",
         serde_json::to_string(&(entry, message)).expect("REPL error encoding")
@@ -33,6 +38,61 @@ fn repl_paths(mut report: Value, entry: Option<&Path>) -> Value {
     report
 }
 
+/// Preserve Elm's public CLI text without reproducing a runtime deadlock.
+/// Manager initialization is asynchronous for these commands in Elm 0.19.1.
+pub fn proxy_cli_error(message: &str, command: &str, ansi: bool) -> Option<String> {
+    let exception = message.strip_prefix("elm: ")?.strip_suffix('\n')?;
+    if !exception.starts_with("HttpExceptionContentWrapper {unHttpExceptionContentWrapper = InvalidProxyEnvironmentVariable ") {
+        return None;
+    }
+    let asynchronous = match command {
+        "make" | "init" | "install" => true,
+        "diff" | "bump" => false,
+        _ => return None,
+    };
+    let detail = if asynchronous {
+        "thread blocked indefinitely in an MVar operation"
+    } else {
+        exception
+    };
+    let banner = internal_error_document(detail, ansi);
+    Some(if asynchronous { format!("{message}{banner}") } else { banner })
+}
+
+pub fn confirmation_eof() -> String {
+    use std::io::IsTerminal;
+    format!("ELM_CLI_RAW:{}", internal_error_document(
+        "<stdin>: hGetLine: end of file", std::io::stderr().is_terminal()))
+}
+
+pub fn output_io_error(path: &Path, operation: &str, error: std::io::Error) -> String {
+    use std::io::{ErrorKind, IsTerminal};
+    let detail = match (operation, error.kind()) {
+        ("openBinaryFile", ErrorKind::NotFound) => "does not exist (No such file or directory)",
+        ("openBinaryFile", ErrorKind::IsADirectory) => "inappropriate type (Is a directory)",
+        ("openBinaryFile" | "createDirectory", ErrorKind::PermissionDenied) => {
+            "permission denied (Permission denied)"
+        }
+        ("createDirectory", ErrorKind::NotADirectory) => "inappropriate type (Not a directory)",
+        ("createDirectory", ErrorKind::AlreadyExists) => "already exists (File exists)",
+        _ => return format!("{}: {error}", path.display()),
+    };
+    format!("ELM_CLI_RAW:{}", internal_error_document(
+        &format!("{}: {operation}: {detail}", path.display()),
+        std::io::stderr().is_terminal()))
+}
+
+fn internal_error_document(detail: &str, ansi: bool) -> String {
+    let mut banner = include_str!("proxy_error_banner.txt").to_owned();
+    if ansi {
+        for title in ["-- ERROR -----------------------------------------------------------------------", "-- REQUEST ---------------------------------------------------------------------"] {
+            banner = banner.replace(title, &format!("\x1b[33m{title}\x1b[0m"));
+        }
+        banner = banner.replacen("\n>   ", "\n\x1b[91m>\x1b[0m   ", 1);
+    }
+    banner.replace("{DETAIL}", detail)
+}
+
 pub fn report(message: &str) -> Value {
     if let Some((entry, message)) = repl_message(message) {
         return repl_paths(report(&message), Some(&entry));
@@ -47,13 +107,26 @@ pub fn report(message: &str) -> Value {
         return result;
     }
     if let Some(messages) = planexpo_elm::source_error::batch_messages(message) {
-        let mut errors = Vec::new();
+        let mut errors: Vec<Value> = Vec::new();
         for message in messages {
             let item = report(&message);
             let Some(modules) = item["errors"].as_array() else {
                 return item;
             };
-            errors.extend(modules.iter().cloned());
+            for module in modules {
+                if let Some(existing) = errors.iter_mut().find(|existing| {
+                    existing["path"] == module["path"] && existing["name"] == module["name"]
+                }) {
+                    if let (Some(target), Some(problems)) = (
+                        existing["problems"].as_array_mut(),
+                        module["problems"].as_array(),
+                    ) {
+                        target.extend(problems.iter().cloned());
+                    }
+                } else {
+                    errors.push(module.clone());
+                }
+            }
         }
         errors.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
         return json!({"type":"compile-errors", "errors":errors});
@@ -116,6 +189,14 @@ pub fn report(message: &str) -> Value {
                         .to_string_lossy()
                         .into_owned()
                 });
+            if let Some(report) = planexpo_elm::declaration_diagnostic::unfinished_definition(
+                &source,
+                &name,
+                Path::new(path),
+                explanation.trim_start(),
+            ) {
+                return report;
+            }
             if let Some(end) = &end_position
                 && let Some(report) = planexpo_elm::name_diagnostic::report(
                     &source,
@@ -273,6 +354,13 @@ fn terminal_context(message: &str, entry: Option<&Path>) -> String {
         return terminal_context(&message, entry);
     }
     if let Some(messages) = planexpo_elm::source_error::batch_messages(message) {
+        let combined = report(message);
+        if combined["errors"]
+            .as_array()
+            .is_some_and(|errors| !errors.is_empty())
+        {
+            return planexpo_elm::docs_diagnostic::terminal(&repl_paths(combined, entry));
+        }
         return messages
             .iter()
             .map(|message| terminal_context(message, entry))
@@ -416,6 +504,27 @@ fn terminal_context(message: &str, entry: Option<&Path>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn repl_preserves_complete_cli_errors() {
+        let message = "ELM_CLI_RAW:elm: invalid proxy\n";
+        assert_eq!(repl_error(Path::new("Elm_Repl.elm"), message.into()), message);
+    }
+
+    #[test]
+    fn batched_problems_in_one_module_have_one_blank_separator() {
+        let messages = ["First problem", "Second problem"].map(|message| {
+            planexpo_elm::docs_diagnostic::encode(&json!({
+                "type": "compile-errors",
+                "errors": [{"path": "Main.elm", "name": "Main", "problems": [{
+                    "title": "NAME CLASH", "message": [message]
+                }]}]
+            }))
+        });
+        let rendered = terminal(&planexpo_elm::source_error::batch(messages.into()));
+        assert!(rendered.contains("First problem\n\n-- NAME CLASH"));
+        assert!(rendered.ends_with("Second problem\n"));
+    }
 
     #[test]
     fn non_source_errors_keep_their_original_message() {

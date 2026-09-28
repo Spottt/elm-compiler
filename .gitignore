@@ -5,3 +5,5 @@
 /release/
 /dist/
 *.tgz
+__pycache__/
+/reactor/elm-stuff/

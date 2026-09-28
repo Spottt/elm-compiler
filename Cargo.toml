@@ -1,19 +1,33 @@
 [package]
 name = "planexpo-elm"
-version = "0.1.0"
+version = "0.3.0-alpha.4"
 edition = "2024"
 license = "BSD-3-Clause"
 publish = false
 
 [dependencies]
-reqwest = { version = "0.12.28", default-features = false, features = ["blocking", "rustls-tls-native-roots"] }
+rustls = { version = "0.23.45", default-features = false, features = ["std", "elm-name-first"] }
+flate2 = { version = "1", default-features = false, features = ["zlib-rs"] }
+tower-http = { version = "0.6.11", default-features = false, features = ["decompression-gzip"] }
+hyper-util = { version = "0.1.20", default-features = false, features = ["client-legacy", "client-proxy", "tokio", "elm-proxy-environment", "elm-bracketed-host"] }
+# Preserve HTTP/1 reason phrases in Elm-compatible download diagnostics.
+hyper = { version = "1", default-features = false }
+reqwest = { version = "0.12.28", default-features = false, features = ["blocking", "rustls-tls-native-roots", "multipart", "gzip"] }
 rustyline = { version = "18.0.1", default-features = false }
 serde = "1"
 serde_json = { version = "1", features = ["raw_value"] }
 sha1 = "0.10"
 sha2 = "0.10"
+blake3 = "=1.8.7"
 tempfile = "3"
+tiny_http = "0.12.0"
 zip = { version = "4.6.1", default-features = false, features = ["deflate"] }
+
+# CI tests the repository and its standalone export. Avoid duplicating large
+# debug/incremental artifacts; assertions and overflow checks remain enabled.
+[profile.dev]
+debug = 0
+incremental = false
 
 [profile.release]
 lto = "thin"
@@ -22,3 +36,11 @@ codegen-units = 1
 [target."cfg(unix)".dependencies]
 nix = { version = "0.31.3", default-features = false, features = ["signal"] }
 signal-hook = "0.3.18"
+
+# Preserve transport context needed by Elm-compatible diagnostics.
+[patch.crates-io]
+compression-codecs = { path = "vendor/compression-codecs" }
+tower-http = { path = "vendor/tower-http" }
+hyper-util = { path = "vendor/hyper-util" }
+
+rustls = { path = "vendor/rustls" }

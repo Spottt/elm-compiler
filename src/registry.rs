@@ -50,6 +50,18 @@ impl Registry {
     pub fn versions(&self, name: &str) -> Option<&[Version]> {
         self.packages.get(name).map(Vec::as_slice)
     }
+    /// Terminal.Helpers ranks malformed package arguments by the full name,
+    /// unlike Elm.Package.nearbyNames which ranks author and project separately.
+    pub fn argument_examples(&self, given: &str) -> Vec<String> {
+        let target: Vec<_> = given.chars().flat_map(char::to_lowercase).collect();
+        let mut names: Vec<_> = self.packages.keys().collect();
+        names.sort_by(|a, b| compare_names(a, b));
+        names.sort_by_key(|name| {
+            let candidate: Vec<_> = name.chars().flat_map(char::to_lowercase).collect();
+            edit_distance(&target, &candidate)
+        });
+        names.into_iter().take(4).cloned().collect()
+    }
     /// Elm.Package.nearbyNames: restricted Damerau-Levenshtein distance,
     /// with no author penalty for the two official package organizations.
     pub fn nearby_names(&self, name: &str) -> Vec<String> {
@@ -189,7 +201,7 @@ impl Registry {
     }
 }
 
-fn edit_distance(left: &[u8], right: &[u8]) -> usize {
+fn edit_distance<T: PartialEq>(left: &[T], right: &[T]) -> usize {
     let mut previous: Vec<_> = (0..=right.len()).collect();
     let mut before_previous = previous.clone();
     let mut current = previous.clone();

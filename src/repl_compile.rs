@@ -12,6 +12,8 @@ pub fn compile(
     ansi: bool,
 ) -> Result<Option<String>, String> {
     fs::write(entry, source).map_err(|e| e.to_string())?;
+    let selected = crate::package_resolution::resolve(manifest, home)?;
+    crate::dependency_build::verify(manifest, home, &selected)?;
     let graph = project::discover(manifest, entry, home)?;
     let report = analyze::generate_for_repl(&graph)?;
     if !report.generation_errors.is_empty() {

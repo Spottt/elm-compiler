@@ -37,20 +37,24 @@ pub enum SymbolKind {
     },
     Kernel,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Symbol {
     pub module: Rc<str>,
     pub name: Rc<str>,
     pub kind: SymbolKind,
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Symbols {
     pub entries: Vec<Symbol>,
     strings: HashMap<String, Rc<str>>,
     index: HashMap<(Rc<str>, Rc<str>, Space), SymbolId>,
+    by_module: HashMap<Rc<str>, Vec<SymbolId>>,
 }
 impl Symbols {
     fn string(&mut self, s: &str) -> Rc<str> {
+        if let Some(interned) = self.strings.get(s) {
+            return interned.clone();
+        }
         self.strings
             .entry(s.into())
             .or_insert_with(|| Rc::from(s))
@@ -64,17 +68,24 @@ impl Symbols {
             return *id;
         }
         let id = SymbolId(self.entries.len() as u32);
+        self.by_module.entry(module.clone()).or_default().push(id);
         self.entries.push(Symbol { module, name, kind });
         self.index.insert(key, id);
         id
+    }
+    /// IDs in insertion order, including all namespaces and non-contiguous IDs.
+    pub(crate) fn module_symbols(&self, module: &str) -> &[SymbolId] {
+        self.by_module.get(module).map(Vec::as_slice).unwrap_or_default()
     }
     pub fn get(&self, id: SymbolId) -> &Symbol {
         &self.entries[id.0 as usize]
     }
     pub fn lookup(&self, module: &str, name: &str, space: Space) -> Option<SymbolId> {
-        self.index
-            .get(&(Rc::from(module), Rc::from(name), space))
-            .copied()
+        // Both components were interned when the symbol was inserted. Reuse
+        // their storage instead of allocating two temporary strings per lookup.
+        let module = self.strings.get(module)?;
+        let name = self.strings.get(name)?;
+        self.index.get(&(module.clone(), name.clone(), space)).copied()
     }
 }
 #[derive(Debug, Clone, Default)]
@@ -84,56 +95,85 @@ pub struct Interface {
     pub constructors: BTreeMap<String, SymbolId>,
     pub operators: BTreeMap<String, SymbolId>,
 }
-type Candidates = BTreeMap<String, BTreeSet<SymbolId>>;
-#[derive(Default)]
+impl Interface {
+    fn namespace(&self, space: Space) -> &BTreeMap<String, SymbolId> {
+        match space {
+            Space::Value => &self.values,
+            Space::Type => &self.types,
+            Space::Constructor => &self.constructors,
+        }
+    }
+}
+// Almost every imported name has one binding. Allocate a set only when
+// different imports actually make a name ambiguous.
+#[derive(Clone)]
+enum Bindings {
+    One(SymbolId),
+    Many(BTreeSet<SymbolId>),
+}
+type Candidates = BTreeMap<String, Bindings>;
+#[derive(Clone, Default)]
 pub struct Environment {
     values: Candidates,
     types: Candidates,
     constructors: Candidates,
     operators: Candidates,
-    qualified_values: Candidates,
-    qualified_types: Candidates,
-    qualified_constructors: Candidates,
+    // Keep each imported interface once; expand qualified names only for
+    // diagnostics. Cloning an environment shares these immutable interfaces.
+    qualified: BTreeMap<String, Vec<Rc<Interface>>>,
     // An imported module exists even when one namespace has no exposed names.
     imported_prefixes: BTreeSet<String>,
     kernel: BTreeMap<String, String>,
     allow_kernel: bool,
 }
+impl Bindings {
+    fn add(&mut self, id: SymbolId) {
+        match self {
+            Self::One(previous) if *previous != id => {
+                *self = Self::Many(BTreeSet::from([*previous, id]));
+            }
+            Self::One(_) => {}
+            Self::Many(ids) => { ids.insert(id); }
+        }
+    }
+}
 fn merge(target: &mut Candidates, name: &str, id: SymbolId) {
-    target.entry(name.into()).or_default().insert(id);
+    target.entry(name.into()).and_modify(|bindings| bindings.add(id)).or_insert(Bindings::One(id));
 }
 fn replace(target: &mut Candidates, name: &str, id: SymbolId) {
-    target.insert(name.into(), BTreeSet::from([id]));
+    target.insert(name.into(), Bindings::One(id));
 }
-fn unique(
-    map: &Candidates,
+fn unique(map: &Candidates, name: &str, symbols: &Symbols, thing: &str) -> Result<SymbolId, String> {
+    unique_bindings(map.get(name).ok_or_else(|| format!("unknown name {name}"))?, name, symbols, thing)
+}
+fn unique_bindings(
+    candidates: &Bindings,
     name: &str,
     symbols: &Symbols,
     thing: &str,
 ) -> Result<SymbolId, String> {
-    let candidates = map
-        .get(name)
-        .ok_or_else(|| format!("unknown name {name}"))?;
-    if candidates.len() != 1 {
-        let mut choices = candidates
-            .iter()
-            .map(|id| {
-                let symbol = symbols.get(*id);
-                let module = symbol.module.rsplit(':').next().unwrap_or(&symbol.module);
-                format!("{module}.{}", symbol.name)
-            })
-            .collect::<Vec<_>>();
-        choices.sort();
-        choices.dedup();
-        let homes = choices
-            .iter()
-            .filter_map(|choice| choice.rsplit_once('.').map(|(home, _)| home.to_owned()))
-            .collect();
-        return Err(crate::name_diagnostic::ambiguous(
-            name, thing, homes, &choices,
-        ));
+    match candidates {
+        Bindings::One(id) => Ok(*id),
+        Bindings::Many(candidates) => {
+            let mut choices = candidates
+                .iter()
+                .map(|id| {
+                    let symbol = symbols.get(*id);
+                    let module = symbol.module.rsplit(':').next().unwrap_or(&symbol.module);
+                    format!("{module}.{}", symbol.name)
+                })
+                .collect::<Vec<_>>();
+            choices.sort();
+            choices.dedup();
+            let homes = choices
+                .iter()
+                .filter_map(|choice| choice.rsplit_once('.').map(|(home, _)| home.to_owned()))
+                .collect();
+            Err(crate::name_diagnostic::ambiguous(
+                name, thing, homes, &choices,
+            ))
+        }
     }
-    Ok(*candidates.first().unwrap())
 }
 fn insert(map: &mut BTreeMap<String, SymbolId>, name: &str, id: SymbolId) -> Result<(), String> {
     if map.insert(name.into(), id).is_some() {
@@ -149,16 +189,17 @@ impl Environment {
         exposing: &Exposing,
         symbols: &Symbols,
     ) -> Result<(), String> {
+        self.import_shared(prefix, Rc::new(foreign.clone()), exposing, symbols)
+    }
+    pub fn import_shared(
+        &mut self,
+        prefix: &str,
+        foreign: Rc<Interface>,
+        exposing: &Exposing,
+        symbols: &Symbols,
+    ) -> Result<(), String> {
         self.imported_prefixes.insert(prefix.into());
-        for (src, dst) in [
-            (&foreign.values, &mut self.qualified_values),
-            (&foreign.types, &mut self.qualified_types),
-            (&foreign.constructors, &mut self.qualified_constructors),
-        ] {
-            for (name, id) in src {
-                merge(dst, &format!("{prefix}.{name}"), *id);
-            }
-        }
+        self.qualified.entry(prefix.into()).or_default().push(foreign.clone());
         match exposing {
             Exposing::All => {
                 for (src, dst) in [
@@ -219,6 +260,35 @@ impl Environment {
             }
         }
         Ok(())
+    }
+    fn locals(&self, space: Space) -> &Candidates {
+        match space {
+            Space::Value => &self.values,
+            Space::Type => &self.types,
+            Space::Constructor => &self.constructors,
+        }
+    }
+    fn candidates(&self, name: &str, space: Space) -> Option<Bindings> {
+        let Some((prefix, field)) = name.rsplit_once('.') else {
+            return self.locals(space).get(name).cloned();
+        };
+        let mut candidates: Option<Bindings> = None;
+        for interface in self.qualified.get(prefix)? {
+            if let Some(id) = interface.namespace(space).get(field) {
+                match &mut candidates {
+                    Some(bindings) => bindings.add(*id),
+                    None => candidates = Some(Bindings::One(*id)),
+                }
+            }
+        }
+        candidates
+    }
+    fn qualified_names(&self, space: Space) -> BTreeSet<String> {
+        self.qualified.iter().flat_map(|(prefix, interfaces)| {
+            interfaces.iter().flat_map(move |interface| {
+                interface.namespace(space).keys().map(move |name| format!("{prefix}.{name}"))
+            })
+        }).collect()
     }
     pub fn kernel(&mut self, name: &str, owner: &str) {
         self.kernel.insert(name.into(), owner.into());
@@ -460,6 +530,8 @@ struct Resolver<'a, 's> {
     symbols: &'a mut Symbols,
     local: Interface,
     scope: HashMap<&'s str, LocalId>,
+    binding_context: &'static str,
+    binding_function: Option<&'s str>,
     out: Resolved,
 }
 impl<'a, 's> Resolver<'a, 's> {
@@ -478,10 +550,41 @@ impl<'a, 's> Resolver<'a, 's> {
             return Err(crate::source_error::locate_slice(
                 self.ast.source,
                 region_name,
-                if previous.is_some() {
-                    format!("duplicate local name {name}")
+                if let Some(previous) = previous {
+                    let later = if (previous.as_ptr() as usize) > (name.as_ptr() as usize) {
+                        *previous
+                    } else {
+                        name
+                    };
+                    crate::name_diagnostic::duplicate_pattern(
+                        self.ast.source,
+                        name,
+                        later,
+                        self.binding_context,
+                        self.binding_function,
+                    )
                 } else {
-                    format!("shadowing local name {name}")
+                    let first =
+                        self.scope
+                            .get_key_value(name)
+                            .map(|(bound, _)| *bound)
+                            .or_else(|| {
+                                self.ast.declarations.iter().find_map(|declaration| {
+                                    match declaration {
+                                        Declaration::Value { name: bound, .. }
+                                        | Declaration::Port { name: bound, .. }
+                                            if *bound == name =>
+                                        {
+                                            Some(*bound)
+                                        }
+                                        _ => None,
+                                    }
+                                })
+                            });
+                    first.map_or_else(
+                        || format!("shadowing local name {name}"),
+                        |first| crate::name_diagnostic::shadowing(self.ast.source, name, first),
+                    )
                 },
             ));
         }
@@ -500,7 +603,6 @@ impl<'a, 's> Resolver<'a, 's> {
         if let Some(id) = self.scope.get(name) {
             return Ok(Binding::Local(*id));
         }
-        let qualified = name.contains('.');
         if let Some((prefix, field)) = name.rsplit_once('.')
             && prefix.starts_with("Elm.Kernel.")
             && self.env.allow_kernel
@@ -517,50 +619,21 @@ impl<'a, 's> Resolver<'a, 's> {
             .rsplit('.')
             .next()
             .is_some_and(|n| n.chars().next().is_some_and(crate::unicode::is_upper));
-        let map = match (qualified, upper) {
-            (false, false) => &self.env.values,
-            (true, false) => &self.env.qualified_values,
-            (false, true) => &self.env.constructors,
-            (true, true) => &self.env.qualified_constructors,
-        };
-        Ok(Binding::Global(
-            unique(
-                map,
-                name,
-                self.symbols,
-                if upper { "variant" } else { "variable" },
-            )
-            .map_err(|error| {
-                if !map.contains_key(name) {
-                    self.unknown(
-                        name,
-                        if upper {
-                            Space::Constructor
-                        } else {
-                            Space::Value
-                        },
-                    )
-                } else {
-                    crate::source_error::locate_slice(self.ast.source, name, error)
-                }
-            })?,
-        ))
+        self.global(name, if upper { Space::Constructor } else { Space::Value }).map(Binding::Global)
+    }
+    fn global(&self, name: &str, space: Space) -> Result<SymbolId, String> {
+        let candidates = self.env.candidates(name, space).ok_or_else(|| self.unknown(name, space))?;
+        let thing = match space { Space::Value => "variable", Space::Type => "type", Space::Constructor => "variant" };
+        unique_bindings(&candidates, name, self.symbols, thing)
+            .map_err(|error| crate::source_error::locate_slice(self.ast.source, name, error))
     }
     fn unknown(&self, name: &str, space: Space) -> String {
-        let (locals, qualified_names, thing) = match space {
-            Space::Value => (&self.env.values, &self.env.qualified_values, "variable"),
-            Space::Constructor => (
-                &self.env.constructors,
-                &self.env.qualified_constructors,
-                "variant",
-            ),
-            Space::Type => (&self.env.types, &self.env.qualified_types, "type"),
-        };
-        let mut local_names: BTreeSet<String> = locals.keys().cloned().collect();
+        let thing = match space { Space::Value => "variable", Space::Type => "type", Space::Constructor => "variant" };
+        let mut local_names: BTreeSet<String> = self.env.locals(space).keys().cloned().collect();
         if space == Space::Value {
             local_names.extend(self.scope.keys().map(|name| (*name).to_owned()));
         }
-        let candidates = qualified_names.keys().cloned().chain(local_names).collect();
+        let candidates = self.env.qualified_names(space).into_iter().chain(local_names).collect();
         let known_prefix = name
             .rsplit_once('.')
             .is_some_and(|(prefix, _)| self.env.imported_prefixes.contains(prefix));
@@ -595,19 +668,7 @@ impl<'a, 's> Resolver<'a, 's> {
                         pending.push(*head);
                     }
                     Pattern::Constructor(name, args) => {
-                        let map = if name.contains('.') {
-                            &self.env.qualified_constructors
-                        } else {
-                            &self.env.constructors
-                        };
-                        let symbol =
-                            unique(map, name, self.symbols, "variant").map_err(|error| {
-                                if !map.contains_key(*name) {
-                                    self.unknown(name, Space::Constructor)
-                                } else {
-                                    crate::source_error::locate_slice(self.ast.source, name, error)
-                                }
-                            })?;
+                        let symbol = self.global(name, Space::Constructor)?;
                         match self.symbols.get(symbol).kind {
                             SymbolKind::Constructor {
                                 record: false,
@@ -615,9 +676,7 @@ impl<'a, 's> Resolver<'a, 's> {
                                 ..
                             } if arity == args.len() => {}
                             SymbolKind::Constructor { record: true, .. } => {
-                                return Err(format!(
-                                    "record alias {name} cannot be used as a pattern constructor"
-                                ));
+                                return Err(crate::name_diagnostic::record_pattern(name));
                             }
                             SymbolKind::Constructor { arity, .. } => {
                                 return Err(crate::name_diagnostic::arity(
@@ -665,22 +724,15 @@ impl<'a, 's> Resolver<'a, 's> {
                 match &self.ast.types[id.0 as usize].kind {
                     Type::Var(name) => {
                         if allowed.is_some_and(|a| !a.contains(name)) {
-                            return Err(format!("unbound type variable {name}"));
+                            return Err(crate::type_variable_diagnostic::unbound(
+                                self.ast,
+                                name,
+                                format!("unbound type variable {name}"),
+                            ));
                         }
                     }
                     Type::Constructor(name, args) => {
-                        let map = if name.contains('.') {
-                            &self.env.qualified_types
-                        } else {
-                            &self.env.types
-                        };
-                        let symbol = unique(map, name, self.symbols, "type").map_err(|error| {
-                            if !map.contains_key(*name) {
-                                self.unknown(name, Space::Type)
-                            } else {
-                                crate::source_error::locate_slice(self.ast.source, name, error)
-                            }
-                        })?;
+                        let symbol = self.global(name, Space::Type)?;
                         if let SymbolKind::Type { arity, .. } = self.symbols.get(symbol).kind
                             && arity != args.len()
                         {
@@ -712,7 +764,11 @@ impl<'a, 's> Resolver<'a, 's> {
                         if let Some(name) = extension
                             && allowed.is_some_and(|a| !a.contains(name))
                         {
-                            return Err(format!("unbound record variable {name}"));
+                            return Err(crate::type_variable_diagnostic::unbound(
+                                self.ast,
+                                name,
+                                format!("unbound record variable {name}"),
+                            ));
                         }
                         let mut names = BTreeSet::new();
                         for (name, ty) in fields {
@@ -740,14 +796,16 @@ impl<'a, 's> Resolver<'a, 's> {
         enum Work<'a, 's> {
             Expr(ExprId),
             Pop(Vec<&'s str>),
-            Function(&'a [PatternId], ExprId),
+            Function(Option<&'s str>, &'a [PatternId], ExprId),
             Branch(PatternId, ExprId),
         }
         let mut pending = vec![Work::Expr(root)];
         while let Some(work) = pending.pop() {
             match work {
                 Work::Pop(frame) => self.pop(frame),
-                Work::Function(patterns, body) => {
+                Work::Function(name, patterns, body) => {
+                    self.binding_context = if name.is_some() { "function" } else { "lambda" };
+                    self.binding_function = name;
                     let mut frame = Vec::new();
                     for pattern in patterns {
                         self.bind_pattern(*pattern, &mut frame)?;
@@ -756,6 +814,8 @@ impl<'a, 's> Resolver<'a, 's> {
                     pending.push(Work::Expr(body));
                 }
                 Work::Branch(pattern, body) => {
+                    self.binding_context = "case";
+                    self.binding_function = None;
                     let mut frame = Vec::new();
                     self.bind_pattern(pattern, &mut frame)?;
                     pending.push(Work::Pop(frame));
@@ -825,7 +885,9 @@ impl<'a, 's> Resolver<'a, 's> {
                                     pending.push(Work::Expr(*expr));
                                 }
                             }
-                            Expr::Lambda(args, body) => pending.push(Work::Function(args, *body)),
+                            Expr::Lambda(args, body) => {
+                                pending.push(Work::Function(None, args, *body))
+                            }
                             Expr::Case(subject, branches) => {
                                 for (pattern, body) in branches.iter().rev() {
                                     pending.push(Work::Branch(*pattern, *body));
@@ -837,10 +899,14 @@ impl<'a, 's> Resolver<'a, 's> {
                                 for declaration in declarations {
                                     match declaration {
                                         Declaration::Value { name, body, .. } => {
+                                            self.binding_context = "let";
+                                            self.binding_function = None;
                                             let local = self.bind_name(name, &mut frame)?;
                                             self.out.definitions.insert(*body, local);
                                         }
                                         Declaration::Destruct { pattern, .. } => {
+                                            self.binding_context = "let";
+                                            self.binding_function = None;
                                             self.bind_pattern(*pattern, &mut frame)?
                                         }
                                         Declaration::Annotation { ty, .. } => self.ty(*ty, None)?,
@@ -852,8 +918,15 @@ impl<'a, 's> Resolver<'a, 's> {
                                 for declaration in declarations.iter().rev() {
                                     match declaration {
                                         Declaration::Value {
-                                            arguments, body, ..
-                                        } => pending.push(Work::Function(arguments, *body)),
+                                            name,
+                                            arguments,
+                                            body,
+                                            ..
+                                        } => pending.push(Work::Function(
+                                            Some(name),
+                                            arguments,
+                                            *body,
+                                        )),
                                         Declaration::Destruct { body, .. } => {
                                             pending.push(Work::Expr(*body))
                                         }
@@ -901,38 +974,60 @@ pub fn resolve(
         symbols,
         local,
         scope: HashMap::new(),
+        binding_context: "pattern",
+        binding_function: None,
         out,
     };
-    for declaration in &ast.declarations {
-        match declaration {
-            Declaration::Annotation { ty, .. } | Declaration::Port { ty, .. } => r.ty(*ty, None)?,
-            Declaration::Alias { parameters, ty, .. } => {
-                r.ty(*ty, Some(&parameters.iter().copied().collect()))?
-            }
-            Declaration::Union {
-                parameters,
-                variants,
-                ..
-            } => {
-                let allowed = parameters.iter().copied().collect();
-                for (_, args) in variants {
-                    for ty in args {
-                        r.ty(*ty, Some(&allowed))?;
+    let mut errors = Vec::new();
+    for declaration in ast.declarations.iter().rev() {
+        let result = (|| -> Result<(), String> {
+            match declaration {
+                Declaration::Annotation { ty, .. } | Declaration::Port { ty, .. } => {
+                    r.ty(*ty, None)?
+                }
+                Declaration::Alias { parameters, ty, .. } => {
+                    r.ty(*ty, Some(&parameters.iter().copied().collect()))?
+                }
+                Declaration::Union {
+                    parameters,
+                    variants,
+                    ..
+                } => {
+                    let allowed = parameters.iter().copied().collect();
+                    for (_, args) in variants {
+                        for ty in args {
+                            r.ty(*ty, Some(&allowed))?;
+                        }
                     }
                 }
-            }
-            Declaration::Value {
-                arguments, body, ..
-            } => {
-                let mut frame = Vec::new();
-                for pattern in arguments {
-                    r.bind_pattern(*pattern, &mut frame)?;
+                Declaration::Value {
+                    name,
+                    arguments,
+                    body,
+                    ..
+                } => {
+                    r.binding_context = "function";
+                    r.binding_function = Some(name);
+                    let mut frame = Vec::new();
+                    for pattern in arguments {
+                        r.bind_pattern(*pattern, &mut frame)?;
+                    }
+                    r.expression(*body)?;
+                    r.pop(frame);
                 }
-                r.expression(*body)?;
-                r.pop(frame);
+                _ => {}
             }
-            _ => {}
+            Ok(())
+        })();
+        if let Err(error) = result {
+            errors.push(error);
+            // Failed expression traversal can leave nested bindings on the stack.
+            // Top-level declarations always begin with an empty local scope.
+            r.scope.clear();
         }
+    }
+    if !errors.is_empty() {
+        return Err(crate::source_error::batch(errors));
     }
     let interface = exported(ast, &r.local, r.symbols)?;
     Ok((interface, r.out))
@@ -985,7 +1080,11 @@ fn check_aliases(ast: &Syntax<'_>) -> Result<(), String> {
             }
             for parameter in parameters {
                 if !variables.contains(parameter) {
-                    return Err(format!("unused type parameter {parameter} in alias {name}"));
+                    return Err(crate::type_variable_diagnostic::unbound(
+                        ast,
+                        parameter,
+                        format!("unused type parameter {parameter} in alias {name}"),
+                    ));
                 }
             }
             edges.insert(name, deps);
@@ -1027,4 +1126,24 @@ fn check_aliases(ast: &Syntax<'_>) -> Result<(), String> {
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod module_symbol_tests {
+    use super::*;
+    #[test]
+    fn module_index_tracks_interleaved_spaces_and_cloned_symbol_tables() {
+        let mut symbols = Symbols::default();
+        let a = symbols.intern("A", "value", Space::Value, SymbolKind::Value);
+        let b = symbols.intern("B", "value", Space::Value, SymbolKind::Value);
+        let t = symbols.intern("A", "value", Space::Type, SymbolKind::Type { arity: 0, alias: false });
+        assert_eq!(symbols.intern("A", "value", Space::Value, SymbolKind::Value), a);
+        assert_eq!(symbols.module_symbols("A"), &[a, t]);
+        assert_eq!(symbols.module_symbols("B"), &[b]);
+        assert!(symbols.module_symbols("missing").is_empty());
+        let mut next = symbols.clone();
+        let extra = next.intern("A", "extra", Space::Value, SymbolKind::Value);
+        assert_eq!(next.module_symbols("A"), &[a, t, extra]);
+        assert_eq!(symbols.module_symbols("A"), &[a, t]);
+    }
 }

@@ -94,3 +94,23 @@ fn infix_exports_do_not_create_local_operator_bindings() {
     assert!(fixity::declared(&ast).unwrap().contains_key("+++"));
     assert!(fixity::resolve(&mut ast, &Table::new()).is_err());
 }
+
+#[test]
+fn binary_region_preserves_parenthesized_final_operand() {
+    let source = "x = 1 :: (True :: [])";
+    let mut ast = parse(source).unwrap();
+    fixity::resolve(&mut ast, &table()).unwrap();
+    let node = &ast.expressions[body(&ast).0 as usize];
+    assert_eq!(
+        &source[node.span.start as usize..node.span.end as usize],
+        "1 :: (True :: [])"
+    );
+    let Expr::Binary("::", _, right) = node.kind else {
+        panic!()
+    };
+    let right = &ast.expressions[right.0 as usize];
+    assert_eq!(
+        &source[right.span.start as usize..right.span.end as usize],
+        "True :: []"
+    );
+}

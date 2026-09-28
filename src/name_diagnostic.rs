@@ -36,11 +36,73 @@ pub fn arity(name: &str, thing: &str, expected: usize, actual: usize, reason: St
         json!({"kind":"arity","name":name,"thing":thing,"expected":expected,"actual":actual})
     )
 }
+pub fn record_pattern(name: &str) -> String {
+    let short = name.rsplit('.').next().unwrap_or(name);
+    format!(
+        "record alias {name} cannot be used as a pattern constructor{MARKER}{}",
+        json!({"kind":"record_pattern","name":short})
+    )
+}
+pub fn type_variables(reason: String, details: Value) -> String {
+    format!("{reason}{MARKER}{details}")
+}
+pub fn shadowing(source: &str, name: &str, first: &str) -> String {
+    let reason = format!("shadowing local name {name}");
+    let Some(offset) = (first.as_ptr() as usize).checked_sub(source.as_ptr() as usize) else {
+        return reason;
+    };
+    if source.get(offset..offset + first.len()) != Some(first) {
+        return reason;
+    }
+    let prefix = &source[..offset];
+    let line = prefix.bytes().filter(|b| *b == b'\n').count() + 1;
+    let column = prefix.rsplit('\n').next().unwrap_or("").chars().count() + 1;
+    format!(
+        "{reason}{MARKER}{}",
+        json!({"kind":"shadowing","name":name,"first":[line,column,column+first.chars().count()]})
+    )
+}
+pub fn annotation(data: Value) -> String {
+    format!("annotation type mismatch{MARKER}{data}")
+}
+pub fn local_cycle(name: &str, others: &[&str]) -> String {
+    format!(
+        "cyclic local value: recursive let groups must contain only functions{MARKER}{}",
+        json!({"kind":"cycle","local":true,"name":name,"others":others})
+    )
+}
+pub fn cycle(name: &str, others: &[&str]) -> String {
+    format!(
+        "cyclic global value: immediate dependencies cannot be recursive{MARKER}{}",
+        json!({"kind":"cycle","name":name,"others":others})
+    )
+}
+pub fn duplicate_pattern(
+    source: &str,
+    name: &str,
+    later: &str,
+    context: &str,
+    function: Option<&str>,
+) -> String {
+    let reason = format!("duplicate local name {name}");
+    let Some(offset) = (later.as_ptr() as usize).checked_sub(source.as_ptr() as usize) else {
+        return reason;
+    };
+    let Some(prefix) = source.get(..offset) else {
+        return reason;
+    };
+    let line = prefix.bytes().filter(|b| *b == b'\n').count() + 1;
+    let column = prefix.rsplit('\n').next().unwrap_or("").chars().count() + 1;
+    format!(
+        "{reason}{MARKER}{}",
+        json!({"kind":"duplicate_pattern","name":name,"context":context,"function":function,"first":[line,column,column+later.chars().count()]})
+    )
+}
 pub fn has_details(message: &str) -> bool {
     message.contains(MARKER)
 }
 
-fn distance(a: &str, b: &str) -> usize {
+pub(crate) fn distance(a: &str, b: &str) -> usize {
     let a: Vec<_> = a
         .chars()
         .map(|c| c.to_lowercase().next().unwrap())
@@ -78,6 +140,45 @@ pub fn report(
 ) -> Option<Value> {
     let (_, encoded) = detail.split_once(MARKER)?;
     let data: Value = serde_json::from_str(encoded).ok()?;
+    if data["kind"] == "record_access" {
+        return crate::record_access_diagnostic::report(source, module, path, start, end, &data);
+    }
+    if data["kind"] == "call_arity" {
+        return crate::annotation_diagnostic::arity_report(source, module, path, start, end, &data);
+    }
+    if data["kind"] == "annotation_mismatch" {
+        return crate::annotation_diagnostic::report(source, module, path, start, end, &data);
+    }
+    if data["kind"] == "duplicate_pattern" {
+        return duplicate_pattern_report(source, module, path, start, end, &data);
+    }
+    if data["kind"] == "cycle" {
+        return cycle_report(source, module, path, start, end, &data);
+    }
+    if data["kind"] == "shadowing" {
+        return shadowing_report(source, module, path, start, end, &data);
+    }
+    if data["kind"] == "type_variables" {
+        return crate::type_variable_diagnostic::report(source, module, path, start, end, &data);
+    }
+    if data["kind"] == "record_pattern" {
+        let name = data["name"].as_str()?;
+        let mut message = snippet_positions(
+            source,
+            start,
+            end,
+            &reflow(&format!(
+                "You can construct records by using `{name}` as a function, but it is not available in pattern matching like this:"
+            )),
+        )?;
+        text(
+            &mut message,
+            "\nI recommend matching the record as a variable and unpacking it later.".into(),
+        );
+        return Some(
+            json!({"type":"compile-errors","errors":[{"path":path,"name":module,"problems":[{"title":"BAD PATTERN","region":{"start":{"line":start.0,"column":start.1},"end":{"line":end.0,"column":end.1}},"message":message}]}]}),
+        );
+    }
     if data["kind"] == "arity" {
         let name = data["name"].as_str()?;
         let thing = data["thing"].as_str()?;
@@ -340,5 +441,208 @@ fn operator_report(
     }
     Some(
         json!({"type":"compile-errors","errors":[{"path":path,"name":module,"problems":[{"title":"UNKNOWN OPERATOR","region":{"start":{"line":start.0,"column":start.1},"end":{"line":end.0,"column":end.1}},"message":message}]}]}),
+    )
+}
+
+fn shadowing_report(
+    source: &str,
+    module: &str,
+    path: &Path,
+    start: (usize, usize),
+    end: (usize, usize),
+    data: &Value,
+) -> Option<Value> {
+    let name = data["name"].as_str()?;
+    let line = data["first"][0].as_u64()? as usize;
+    let column = data["first"][1].as_u64()? as usize;
+    let last = data["first"][2].as_u64()? as usize;
+    let mut message = if line == start.0 && start.0 == end.0 {
+        let source_line = source.split('\n').nth(line - 1)?;
+        let mut m = vec![];
+        text(
+            &mut m,
+            format!(
+                "These variables cannot have the same name:\n\n{line}| {source_line}\n{}",
+                " ".repeat(column + line.to_string().len() + 1)
+            ),
+        );
+        m.push(
+            json!({"bold":false,"underline":false,"color":"RED","string":"^".repeat(last-column)}),
+        );
+        text(
+            &mut m,
+            " ".repeat((start.1 as u16).wrapping_sub(last as u16) as usize),
+        );
+        m.push(json!({"bold":false,"underline":false,"color":"RED","string":"^".repeat(end.1-start.1)}));
+        m
+    } else {
+        let mut m = snippet_positions(
+            source,
+            (line, column),
+            (line, last),
+            &format!("The name `{name}` is first defined here:"),
+        )?;
+        text(&mut m, "\n".into());
+        for chunk in snippet_positions(
+            source,
+            start,
+            end,
+            "But then it is defined AGAIN over here:",
+        )? {
+            if let Some(s) = chunk.as_str() {
+                text(&mut m, s.into());
+            } else {
+                m.push(chunk);
+            }
+        }
+        m
+    };
+    text(
+        &mut message,
+        "\nThink of a more helpful name for one of them and you should be all set!\n\n".into(),
+    );
+    message.push(json!({"bold":false,"underline":true,"color":null,"string":"Note"}));
+    text(&mut message,": Linters advise against shadowing, so Elm makes “best practices” the\ndefault. Read <https://elm-lang.org/0.19.1/shadowing> for more details on this\nchoice.".into());
+    Some(
+        json!({"type":"compile-errors","errors":[{"path":path,"name":module,"problems":[{"title":"SHADOWING","region":{"start":{"line":start.0,"column":start.1},"end":{"line":end.0,"column":end.1}},"message":message}]}]}),
+    )
+}
+
+fn cycle_report(
+    source: &str,
+    module: &str,
+    path: &Path,
+    start: (usize, usize),
+    end: (usize, usize),
+    data: &Value,
+) -> Option<Value> {
+    let name = data["name"].as_str()?;
+    let others = data["others"].as_array()?;
+    let local = data["local"].as_bool().unwrap_or(false);
+    let mut message = snippet_positions(
+        source,
+        start,
+        end,
+        &if others.is_empty() {
+            format!(
+                "The `{name}` value is defined directly in terms of itself, causing an infinite loop."
+            )
+        } else if local {
+            "I do not allow cyclic values in `let` expressions.".into()
+        } else {
+            format!("The `{name}` definition is causing a very tricky infinite loop.")
+        },
+    )?;
+    text(&mut message, "\n".into());
+    if others.is_empty() {
+        for (index,(question,details)) in [
+            ("Are you are trying to mutate a variable?",format!("Elm does not have mutation, so when I see {name} defined in terms of {name}, I treat it as a recursive definition. Try giving the new value a new name!")),
+            ("Maybe you DO want a recursive value?",format!("To define {name} we need to know what {name} is, so let’s expand it. Wait, but now we need to know what {name} is, so let’s expand it... This will keep going infinitely!")),
+        ].into_iter().enumerate() {
+            if index>0 {text(&mut message,"\n\n".into());}
+            for (index,word) in question.split(' ').enumerate() {
+                if index>0 {text(&mut message," ".into());}
+                message.push(json!({"bold":false,"underline":false,"color":"yellow","string":word}));
+            }
+            text(&mut message,reflow(&format!("{question} {details}"))[question.len()..].into());
+        }
+    } else {
+        text(
+            &mut message,
+            format!(
+                "{}\n\n    ┌─────┐\n",
+                reflow(&format!(
+                    "The `{name}` value depends on itself through the following chain of definitions:"
+                ))
+            ),
+        );
+        for (index, name) in std::iter::once(Some(name))
+            .chain(others.iter().map(Value::as_str))
+            .enumerate()
+        {
+            if index > 0 {
+                text(&mut message, "    │     ↓\n".into());
+            }
+            text(&mut message, "    │    ".into());
+            message.push(json!({"bold":false,"underline":false,"color":"yellow","string":name?}));
+            text(&mut message, "\n".into());
+        }
+        text(&mut message, "    └─────┘".into());
+    }
+    text(&mut message, "\n\n".into());
+    message.push(json!({"bold":false,"underline":true,"color":null,"string":"Hint"}));
+    text(&mut message,if others.is_empty() {": The root problem is often a typo in some variable name, but I recommend\nreading <https://elm-lang.org/0.19.1/bad-recursion> for more detailed advice,\nespecially if you actually do need a recursive value."} else {": The root problem is often a typo in some variable name, but I recommend\nreading <https://elm-lang.org/0.19.1/bad-recursion> for more detailed advice,\nespecially if you actually do want mutually recursive values."}.into());
+    Some(
+        json!({"type":"compile-errors","errors":[{"path":path,"name":module,"problems":[{"title":if local { "CYCLIC VALUE" } else { "CYCLIC DEFINITION" },"region":{"start":{"line":start.0,"column":start.1},"end":{"line":end.0,"column":end.1}},"message":message}]}]}),
+    )
+}
+
+fn duplicate_pattern_report(
+    source: &str,
+    module: &str,
+    path: &Path,
+    start: (usize, usize),
+    end: (usize, usize),
+    data: &Value,
+) -> Option<Value> {
+    let name = data["name"].as_str()?;
+    let heading = match data["context"].as_str()? {
+        "function" => format!(
+            "The `{}` function has multiple `{name}` arguments.",
+            data["function"].as_str()?
+        ),
+        "lambda" => format!("This anonymous function has multiple `{name}` arguments."),
+        "case" => format!("This `case` pattern has multiple `{name}` variables."),
+        "let" => format!("This `let` expression defines `{name}` more than once!"),
+        _ => format!("This pattern contains multiple `{name}` variables."),
+    };
+    let line = data["first"][0].as_u64()? as usize;
+    let column = data["first"][1].as_u64()? as usize;
+    let last = data["first"][2].as_u64()? as usize;
+    let mut message = if line == start.0 && start.0 == end.0 {
+        let source_line = source.split('\n').nth(line - 1)?;
+        let mut m = vec![];
+        text(
+            &mut m,
+            format!(
+                "{}\n\n{line}| {source_line}\n{}",
+                reflow(&heading),
+                " ".repeat(column + line.to_string().len() + 1)
+            ),
+        );
+        m.push(
+            json!({"bold":false,"underline":false,"color":"RED","string":"^".repeat(last-column)}),
+        );
+        // Reporting.Render.Code uses Word16 subtraction, including wraparound
+        // when the later occurrence is printed before the earlier occurrence.
+        text(
+            &mut m,
+            " ".repeat((start.1 as u16).wrapping_sub(last as u16) as usize),
+        );
+        m.push(json!({"bold":false,"underline":false,"color":"RED","string":"^".repeat(end.1-start.1)}));
+        m
+    } else {
+        let mut m = snippet_positions(
+            source,
+            (line, column),
+            (line, last),
+            &format!("{heading} One here:"),
+        )?;
+        text(&mut m, "\n".into());
+        for chunk in snippet_positions(source, start, end, "And another one here:")? {
+            if let Some(s) = chunk.as_str() {
+                text(&mut m, s.into());
+            } else {
+                m.push(chunk);
+            }
+        }
+        m
+    };
+    text(
+        &mut message,
+        "\nHow can I know which one you want? Rename one of them!".into(),
+    );
+    Some(
+        json!({"type":"compile-errors","errors":[{"path":path,"name":module,"problems":[{"title":"NAME CLASH","region":{"start":{"line":start.0,"column":start.1},"end":{"line":end.0,"column":end.1}},"message":message}]}]}),
     )
 }

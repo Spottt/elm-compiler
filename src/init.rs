@@ -3,35 +3,48 @@ use planexpo_elm::{
     package_network::{PACKAGE_SERVER, PackageNetwork},
     package_solver,
 };
-use serde_json::json;
+use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
     env, fs,
-    io::{self, Write},
+    io::{self, IsTerminal, Write},
     path::PathBuf,
 };
 
 const QUESTION: &str = "Hello! Elm projects always start with an elm.json file. I can create them!\n\nNow you may be wondering, what will be in this file? How do I add Elm files to\nmy project? How do I see it in the browser? How will my code grow? Do I need\nmore directories? What about tests? Etc.\n\nCheck out <https://elm-lang.org/0.19.1/init> for all the answers!\n\nKnowing all that, would you like me to create an elm.json file now? [Y/n]: ";
 
-fn report(title: &str, message: String) -> String {
+fn report(title: &str, message: Vec<Value>) -> String {
     format!(
         "ELM_DEPENDENCY_JSON:{}",
-        json!({"type":"error","path":null,"title":title,"message":[message]})
+        json!({"type":"error","path":null,"title":title,"message":message})
     )
 }
 
 pub fn run(args: Vec<String>) -> Result<(), String> {
     if args.as_slice() == ["--help"] {
-        eprintln!("The `init` command helps start Elm projects:\n\n    elm init\n\nIt will ask permission to create an elm.json file, the one thing common to all\nElm projects. It also provides a link explaining what to do from there.\n");
+        eprintln!(
+            "The `init` command helps start Elm projects:\n\n    elm init\n\nIt will ask permission to create an elm.json file, the one thing common to all\nElm projects. It also provides a link explaining what to do from there.\n"
+        );
         return Ok(());
     }
+    crate::global_cli::reject_flags(&args)?;
     if !args.is_empty() {
-        return Err("init does not accept arguments or flags".into());
+        return Err(crate::global_cli::extra_arguments(&args));
     }
     if std::path::Path::new("elm.json").is_file() {
-        return Err(report("EXISTING PROJECT", "You already have an elm.json file, so there is nothing for me to initialize!\n\nMaybe <https://elm-lang.org/0.19.1/init> can help you figure out what to do\nnext?".into()));
+        return Err(report("EXISTING PROJECT", vec![
+            json!("You already have an elm.json file, so there is nothing for me to initialize!\n\nMaybe "),
+            json!({"bold":false,"underline":false,"color":"GREEN","string":"<https://elm-lang.org/0.19.1/init>"}),
+            json!(" can help you figure out what to do\nnext?"),
+        ]));
     }
-    print!("{QUESTION}");
+    if io::stdout().is_terminal() {
+        print!("{}", QUESTION
+            .replacen("elm.json", "\x1b[92melm.json\x1b[0m", 1)
+            .replace("<https://elm-lang.org/0.19.1/init>", "\x1b[96m<https://elm-lang.org/0.19.1/init>\x1b[0m"));
+    } else {
+        print!("{QUESTION}");
+    }
     loop {
         io::stdout().flush().map_err(|e| e.to_string())?;
         let mut input = String::new();
@@ -40,7 +53,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
             .map_err(|e| e.to_string())?
             == 0
         {
-            return Err("end of input while waiting for confirmation".into());
+            return Err(crate::diagnostic::confirmation_eof());
         }
         let answer = input.strip_suffix('\n').unwrap_or(&input);
         match answer {
@@ -73,7 +86,15 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
             } else {
                 ("NO OFFLINE SOLUTION", "I could not find compatible versions though, but that may be because I could not\nconnect to https://package.elm-lang.org to get the latest list of packages. Are\nyou able to connect to the internet? Please ask around one of the community\nforums at https://elm-lang.org/community for help!")
             };
-            report(title, format!("I tried to create an elm.json with the following direct dependencies:\n\n    elm/browser\n    elm/core\n    elm/html\n\n{detail}"))
+            report(title, vec![
+                json!("I tried to create an elm.json with the following direct dependencies:\n\n    "),
+                json!({"bold":false,"underline":false,"color":"yellow","string":"elm/browser"}),
+                json!("\n    "),
+                json!({"bold":false,"underline":false,"color":"yellow","string":"elm/core"}),
+                json!("\n    "),
+                json!({"bold":false,"underline":false,"color":"yellow","string":"elm/html"}),
+                json!(format!("\n\n{detail}")),
+            ])
         } else { error }
     })?;
     let (direct, indirect): (BTreeMap<_, _>, BTreeMap<_, _>) = selected

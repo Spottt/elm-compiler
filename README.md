@@ -5,19 +5,20 @@ An independent, **unofficial** reimplementation of the [Elm](https://elm-lang.or
 JavaScript by itself — it never calls the official Haskell compiler.
 
 It was built to compile a large production Elm codebase (ten applications,
-several hundred modules) faster and with far less memory:
+677 modules) faster and with far less memory. Largest application, development
+build (no `--optimize`), median of 3 runs on the same machine:
 
-| Cold build of the largest application | Time  | Peak memory |
-| ------------------------------------- | ----- | ----------- |
-| Official Elm 0.19.1 (8 threads)       | 160 s | 7.7 GiB     |
-| This compiler                         | 19 s  | 336 MiB     |
+|                                  | Official Elm 0.19.1 (8 threads) | This compiler |
+| -------------------------------- | ------------------------------- | ------------- |
+| Cold build                       | 170.9 s · 8.7 GiB               | **12.0 s · 256 MiB** |
+| Rebuild after editing one module | 4.0 s · 1.2 GiB                 | **1.75 s · 250 MiB** |
 
-_Single measurement on one codebase, excluding bundling/minification. Your
-numbers will differ; please share them in an issue._
+_Linux x64, 16 threads, empty project caches, shared package cache, excluding
+bundling. Your numbers will differ; please share them in an issue._
 
-> **Status: experimental.** It compiles real applications that pass their test
-> suites, but it is not a drop-in replacement for every Elm project yet. Read
-> [Compatibility](#compatibility) before relying on it.
+> **Status: alpha.** It compiles real applications that pass their test suites
+> and aims at full Elm 0.19.1 compatibility, with a few deliberate differences
+> listed below. Read [Compatibility](#compatibility) before relying on it.
 
 This project is not affiliated with or endorsed by the Elm project.
 
@@ -27,11 +28,13 @@ This project is not affiliated with or endorsed by the Elm project.
 
 Prebuilt binaries are shipped inside the npm package for:
 
-| OS                   | x64 | ARM64 |
-| -------------------- | --- | ----- |
-| Linux (glibc)        | ✅  | ✅    |
-| macOS                | ✅  | ✅    |
-| Windows, Alpine/musl | ❌ — [build from source](#build-from-source) | ❌ |
+| OS            | x64 | ARM64 |
+| ------------- | --- | ----- |
+| Linux (glibc) | ✅  | ✅    |
+| macOS         | ✅  | ✅    |
+| Windows       | ✅  | —     |
+
+Alpine/musl and other targets: [build from source](#build-from-source).
 
 ```sh
 # In an Elm project
@@ -55,7 +58,7 @@ Standalone binaries (`planexpo-elm-<version>-<platform>.tar.gz`) and a
 
 ## Usage
 
-The command line mirrors `elm`:
+The command line mirrors `elm`, commands and flags included:
 
 ```sh
 planexpo-elm init                                   # create elm.json and src/
@@ -63,19 +66,24 @@ planexpo-elm install elm/http                       # add a dependency
 planexpo-elm make src/Main.elm --output=main.js
 planexpo-elm make src/Main.elm --output=index.html
 planexpo-elm make src/Main.elm --optimize --output=main.js
-planexpo-elm make src/A.elm src/B.elm --output=bundle.js   # several entry points
-planexpo-elm make src/Main.elm --output=/dev/null          # type-check only
+planexpo-elm make src/Main.elm --debug --output=main.js   # time-travelling debugger
+planexpo-elm make src/A.elm src/B.elm --output=bundle.js  # several entry points
 planexpo-elm make --docs=docs.json                  # in a package: check + docs
 planexpo-elm repl
+planexpo-elm reactor --port=8000
+planexpo-elm diff elm/json 1.0.0 1.1.3
+planexpo-elm bump
+planexpo-elm publish
 ```
 
 Additional `make` flags:
 
 | Flag            | Effect |
 | --------------- | ------ |
-| `--report=json` | Machine-readable errors, like `elm make --report=json`. |
 | `--incremental` | Reuse cached per-module results between runs (large win in watch mode). |
 | `--no-cache`    | Neither read nor write the generated-code and type caches. |
+
+`--report=json` behaves like `elm make --report=json`.
 
 Environment variables:
 
@@ -107,36 +115,37 @@ absolute path of the native executable.
 
 ## Compatibility
 
-Target language: **Elm 0.19.1** (reference: elm/compiler tag `0.19.1`, commit
-`c9aefb6`).
+Target: **Elm 0.19.1** (elm/compiler tag `0.19.1`, commit `c9aefb6`), including
+error messages: diagnostics are compared with the official binary, text and
+JSON, by the differential checks in `scripts/`.
 
-Supported:
+Implemented: `init`, `install`, `make` (JavaScript/HTML output, several entry
+points, `--optimize`, `--debug`, `--docs`, `--report=json`), `repl`, `reactor`,
+`diff`, `bump`, `publish`; applications and packages, dependency resolution,
+package download and verification; ports, effect managers, kernel code, WebGL
+shaders.
 
-- Applications and packages, dependency resolution with backtracking, package
-  download and hash verification.
-- The whole pipeline: parsing, operators, name resolution, type inference,
-  pattern exhaustiveness, JavaScript generation, runtime linking, `--optimize`.
-- Ports, effect managers, core kernel code, WebGL shaders.
-- HTML output, several entry points in one bundle, `--report=json`.
-- `init`, `install`, `repl`, `make --docs`.
+Deliberate differences — cases where official Elm 0.19.1 has a known defect
+that this compiler does not reproduce:
 
-Known differences:
+- It rejects a recursive-capture program that official Elm accepts although it
+  sends `undefined` through a port typed `Int`.
+- It fixes the negation of overflowing integer literals, for which official Elm
+  emits invalid JavaScript.
+- TLS is stricter when downloading packages: certificates restricted to client
+  authentication, or with unknown critical extensions, are refused.
+- `elm.json` errors reported as JSON are always valid JSON: official Elm can
+  emit unescaped control characters, overflow its line coordinates or time out
+  on some malformed manifests.
 
-- **No debugger**: `--debug` is not supported.
-- **Error messages are less detailed** than official Elm's. Errors carry their
-  location, but wording and hints often differ.
-- GLSL shaders are tested differentially against official Elm, but full grammar
-  parity is not yet claimed.
-- `make --docs` output and exhaustive `elm.json` validation are incomplete.
-- `bump`, `diff` and `publish` are not implemented.
+Compatibility is checked by differential tests against the official binary, by
+the historical Elm test programs in `tests/upstream/` (33/33 identical decisions
+and JSON diagnostics) and by real applications.
 
-Compatibility is checked with differential tests against the official binary
-and with the historical Elm test programs kept in `tests/upstream/`.
-
-**If a program compiles with official Elm but not with this compiler — or
-behaves differently at runtime — that is a bug.** Please
-[open an issue](https://github.com/Spottt/elm-compiler/issues) with a minimal
-`elm.json` and module.
+**If a program behaves differently with official Elm and with this compiler —
+accepted or rejected, error message, runtime behaviour — that is a bug.**
+Please [open an issue](https://github.com/Spottt/elm-compiler/issues) with a
+minimal `elm.json` and module.
 
 ## Build from source
 
@@ -172,6 +181,9 @@ PLANEXPO_ELM_RUST_BINARY=/path/to/elm-compiler/target/release/planexpo-elm npx p
 | --------------- | ------- |
 | `src/`          | The compiler (library `planexpo_elm` + binary `planexpo-elm`). |
 | `tests/`        | Rust integration tests. `tests/upstream/` holds unmodified upstream fixtures under their own licenses. |
+| `scripts/`      | Differential checks against the official `elm` binary (Python/Node). |
+| `reactor/`      | Sources and compiled assets of the `reactor` interface (from elm/compiler). |
+| `vendor/`       | Patched Rust dependencies (see `vendor/README.md`). |
 | `examples/`     | Small probes used by differential tests (REPL, registry, docs). |
 | `npm/`          | Source of the npm package: launcher, platform resolution, checksum check. It contains no binaries. |
 | `distribution/` | Release assembly (`stage-release.mjs`), local packing (`pack-local.mjs`) and their tests. |
@@ -187,6 +199,7 @@ PLANEXPO_ELM_RUST_BINARY=/path/to/elm-compiler/target/release/planexpo-elm npx p
 
 [BSD 3-Clause](LICENSE), Copyright (c) 2026 Spottt.
 
-This compiler is derived from the Elm compiler and includes code or fixtures
-from GHC's base library and language-glsl; their licenses are in
-`LICENSE-ELM`, `LICENSE-GHC` and `LICENSE-GLSL`. See [NOTICE](NOTICE).
+This compiler is derived from the Elm compiler and includes code, assets or
+fixtures from Elm packages, GHC's base library, language-glsl, Adobe's Source
+fonts and patched Rust crates; their licenses are in `LICENSE-*`,
+`reactor/licenses/` and `vendor/`. See [NOTICE](NOTICE).

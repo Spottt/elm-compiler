@@ -53,12 +53,12 @@ pub fn constraint(name: &str) -> Constraint {
     Constraint::Any
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Alias {
     pub parameters: Vec<Ty>,
     pub root: Ty,
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Catalog {
     pub aliases: BTreeMap<SymbolId, Alias>,
     pub constructors: BTreeMap<SymbolId, Scheme>,
@@ -102,6 +102,12 @@ impl Catalog {
     /// completed module. Keep phantom alias parameters and quantified variables
     /// too, even when they are not reachable from a scheme's result type.
     pub fn compact(&mut self, engine: &mut Engine, globals: &mut BTreeMap<SymbolId, Scheme>) {
+        self.compact_with_policy(engine, globals, false);
+    }
+    pub(crate) fn compact_for_analysis(&mut self, engine: &mut Engine, globals: &mut BTreeMap<SymbolId, Scheme>) {
+        self.compact_with_policy(engine, globals, true);
+    }
+    fn compact_with_policy(&mut self, engine: &mut Engine, globals: &mut BTreeMap<SymbolId, Scheme>, defer_sparse: bool) {
         let mut roots = Vec::new();
         for alias in self.aliases.values() {
             roots.push(alias.root);
@@ -111,7 +117,11 @@ impl Catalog {
             roots.push(scheme.root);
             roots.extend(&scheme.quantified);
         }
-        engine.compact(&mut roots);
+        if defer_sparse {
+            if !engine.compact_if_useful(&mut roots) { return; }
+        } else {
+            engine.compact(&mut roots);
+        }
         let mut roots = roots.into_iter();
         for alias in self.aliases.values_mut() {
             alias.root = roots.next().unwrap();
@@ -159,13 +169,18 @@ impl Catalog {
                 }
                 Type::Record { extension, fields } => {
                     let extension = extension.map(|name| variable(engine, variables, name, level));
-                    engine.term(Term::Record {
+                    let result = engine.term(Term::Record {
                         extension,
                         fields: fields
                             .iter()
-                            .map(|(name, id)| (name.to_string(), done[id]))
+                            .map(|(name, id)| ((*name).into(), done[id]))
                             .collect(),
-                    })
+                    });
+                    engine.record_field_order(
+                        result,
+                        fields.iter().map(|(name, _)| name.to_string()),
+                    );
+                    result
                 }
                 Type::Constructor(_, args) => {
                     let symbol =

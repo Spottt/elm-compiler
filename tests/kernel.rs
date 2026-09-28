@@ -68,6 +68,7 @@ fn rendered_kernel_executes_both_build_modes_and_preserves_field_layout() {
     let content = parse("/*\nimport Source exposing (value)\nimport Elm.Kernel.Utils exposing (identity)\n*/\nvar _Mode__DEBUG = 7;\nvar _Mode__PROD = 9;\nvar data = { __$field: __Source_value, __slot: __0One };\nconsole.log(JSON.stringify([_Mode, _Utils_identity(data.__$field), data.__slot, __0Two]));").unwrap();
     for (mode, expected) in [
         (Mode::Development, "[7,42,0,1]"),
+        (Mode::Debug, "[7,42,0,1]"),
         (Mode::Production, "[9,42,0,1]"),
     ] {
         let js = render(

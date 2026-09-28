@@ -219,6 +219,17 @@ fn executable(name: &str) -> Option<PathBuf> {
             .map(|p| p.join(name))
             .collect()
     };
+    #[cfg(windows)]
+    let candidates: Vec<_> = candidates
+        .into_iter()
+        .flat_map(|path| {
+            if path.extension().is_none() {
+                vec![path.clone(), path.with_extension("exe")]
+            } else {
+                vec![path]
+            }
+        })
+        .collect();
     candidates.into_iter().find(|p| {
         let Ok(metadata) = p.metadata() else {
             return false;
@@ -257,7 +268,7 @@ fn parse_flags(mut args: Vec<String>) -> Result<(bool, Option<String>), String> 
         } else if args.get(index).is_some_and(|value| !value.starts_with('-')) {
             args.remove(index)
         } else {
-            return Err("This flag needs more information:\n\n    --interpreter\n\nIt needs a <interpreter> like this:\n\n    --interpreter=node\n    --interpreter=nodejs\n".into());
+            return Err(crate::make_cli::flag_value_error("--interpreter", None));
         });
     }
     let mut ansi = true;
@@ -267,77 +278,21 @@ fn parse_flags(mut args: Vec<String>) -> Result<(bool, Option<String>), String> 
     {
         let arg = args.remove(index);
         if arg != "--no-colors" {
-            return Err(format!(
-                "This on/off flag was given a value:\n\n    {arg}\n\nAn on/off flag either exists or not. It cannot have an equals sign and value.\nMaybe you want this instead?\n\n    --no-colors\n"
-            ));
+            return Err(crate::make_cli::boolean_value(&arg));
         }
         ansi = false;
     }
     if let Some(arg) = args.iter().find(|arg| arg.starts_with('-')) {
-        let name = arg.trim_start_matches('-').split('=').next().unwrap_or("");
-        let mut suggestions = [
-            (distance(name, "interpreter"), "--interpreter=<interpreter>"),
-            (distance(name, "no-colors"), "--no-colors"),
-        ]
-        .to_vec();
-        if suggestions.iter().any(|(distance, _)| *distance < 3) {
-            suggestions.retain(|(distance, _)| *distance < 3);
-        }
-        suggestions.sort_by_key(|(distance, _)| *distance);
-        let hint = if suggestions.len() == 1 {
-            format!("Maybe you want {} instead?", suggestions[0].1)
-        } else {
-            format!(
-                "Maybe you want one of these instead?\n\n{}",
-                suggestions
-                    .iter()
-                    .map(|(_, flag)| format!("    {flag}"))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            )
-        };
-        return Err(format!(
-            "I do not recognize this flag:\n\n    {arg}\n\n{hint}\n"
+        return Err(crate::make_cli::unknown_with(
+            arg,
+            &[
+                ("interpreter", "--interpreter=<interpreter>"),
+                ("no-colors", "--no-colors"),
+            ],
         ));
     }
     if !args.is_empty() {
-        let (noun, pronoun) = if args.len() == 1 {
-            ("this argument", "it")
-        } else {
-            ("these arguments", "them")
-        };
-        let list = args
-            .iter()
-            .map(|arg| format!("    {arg}"))
-            .collect::<Vec<_>>()
-            .join("\n");
-        return Err(format!(
-            "I was not expecting {noun}:\n\n{list}\n\nTry removing {pronoun}?\n"
-        ));
+        return Err(crate::global_cli::extra_arguments(&args));
     }
     Ok((ansi, interpreter))
-}
-
-// Restricted Damerau-Levenshtein distance, as used by Reporting.Suggest.
-fn distance(left: &str, right: &str) -> usize {
-    let a: Vec<_> = left.chars().collect();
-    let b: Vec<_> = right.chars().collect();
-    let mut rows = vec![vec![0; b.len() + 1]; a.len() + 1];
-    for (i, row) in rows.iter_mut().enumerate() {
-        row[0] = i;
-    }
-    for (j, value) in rows[0].iter_mut().enumerate() {
-        *value = j;
-    }
-    for i in 1..=a.len() {
-        for j in 1..=b.len() {
-            rows[i][j] = (rows[i - 1][j] + 1)
-                .min(rows[i][j - 1] + 1)
-                .min(rows[i - 1][j - 1] + usize::from(a[i - 1] != b[j - 1]));
-            if i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
-                rows[i][j] = rows[i][j].min(rows[i - 2][j - 2] + 1);
-            }
-        }
-    }
-    rows[a.len()][b.len()]
 }

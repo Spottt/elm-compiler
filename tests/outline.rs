@@ -109,7 +109,10 @@ fn cli_renders_manifest_diagnostics_as_json_and_readable_terminal_text() {
             assert_eq!(report["path"], "elm.json");
         } else {
             assert!(stderr.contains("MISSING FIELD"));
-            assert!(stderr.contains("elm.json requires the type field"));
+            assert!(stderr.contains("1| {}"));
+            assert!(
+                stderr.contains("I was expecting to run into an OBJECT with a \"type\" field.")
+            );
         }
     }
 }
@@ -191,5 +194,82 @@ fn dependency_errors_keep_source_order_across_distinct_keys() {
             .unwrap_err()
             .title,
         "PROBLEM WITH CONSTRAINT"
+    );
+}
+
+#[test]
+fn json_numbers_follow_elm_integer_lexing_and_machine_overflow() {
+    let value = decode(r#"{"a":9223372036854775808,"b":18446744073709551616,"c":42}"#).unwrap();
+    assert_eq!(value["a"], i64::MIN);
+    assert_eq!(value["b"], 0);
+    assert_eq!(value["c"], 42);
+    for (source, title) in [
+        (r#"{"a":-1}"#, "EXPECTING A VALUE"),
+        (r#"{"a":1.5}"#, "UNEXPECTED NUMBER"),
+        (r#"{"a":1e2}"#, "UNEXPECTED NUMBER"),
+        (r#"{"a":01}"#, "BAD NUMBER"),
+        (r#"{"a":0e2}"#, "UNFINISHED OBJECT"),
+    ] {
+        let error = decode(source).unwrap_err();
+        let report = planexpo_elm::outline::report_encoded(&error).unwrap();
+        assert_eq!(report["title"], title, "{source}");
+    }
+}
+
+#[test]
+fn json_unicode_escapes_are_raw_snippets_even_without_surrogate_pairs() {
+    let value = decode(r#"{"a":"\ud800","b":"\udfff","c":"\u0000","d":"\ud800\udfff"}"#).unwrap();
+    assert_eq!(value["a"], r#"\ud800"#);
+    assert_eq!(value["b"], r#"\udfff"#);
+    assert_eq!(value["c"], r#"\u0000"#);
+    assert_eq!(value["d"], r#"\ud800\udfff"#);
+}
+
+#[test]
+fn ignored_outline_extensions_are_validated_without_recursive_values() {
+    let nested = format!("{}0{}", "[".repeat(10_000), "]".repeat(10_000));
+    for kind in ["application", "package"] {
+        let value = decode(&format!(r#"{{"type":"{kind}","extension":{nested}}}"#)).unwrap();
+        assert_eq!(value, json!({"type": kind}));
+    }
+    let value = decode(&format!(r#"{{"type":"application","dependencies":{{"direct":{{}},"indirect":{{}},"extension":{nested}}}}}"#)).unwrap();
+    assert_eq!(value["dependencies"], json!({"direct":{},"indirect":{}}));
+    let bad = format!(
+        r#"{{"type":"application","extension":{}?{}}}"#,
+        "[".repeat(10_000),
+        "]".repeat(10_000)
+    );
+    let report = planexpo_elm::outline::report_encoded(&decode(&bad).unwrap_err()).unwrap();
+    assert_eq!(report["title"], "EXPECTING A VALUE");
+}
+
+#[test]
+fn deeply_nested_wrong_types_reach_outline_validation() {
+    let nested = format!("{}0{}", "[".repeat(10_000), "]".repeat(10_000));
+    let root = tempfile::tempdir().unwrap();
+    for field in ["summary", "version", "type"] {
+        let mut config = package();
+        config[field] = json!("PLACEHOLDER");
+        let source = config.to_string().replace("\"PLACEHOLDER\"", &nested);
+        let value = decode(&source).unwrap();
+        assert_eq!(
+            validate(&value, root.path()).unwrap_err().title,
+            "EXPECTING STRING",
+            "{field}"
+        );
+    }
+    let mut config = package();
+    config["exposed-modules"] = json!(["PLACEHOLDER"]);
+    let source = config.to_string().replace("\"PLACEHOLDER\"", &nested);
+    assert_eq!(
+        validate(&decode(&source).unwrap(), root.path())
+            .unwrap_err()
+            .title,
+        "EXPECTING STRING"
+    );
+    let value = decode(&nested).unwrap();
+    assert_eq!(
+        validate(&value, root.path()).unwrap_err().title,
+        "EXPECTING OBJECT"
     );
 }

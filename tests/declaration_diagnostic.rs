@@ -2,6 +2,51 @@ use planexpo_elm::{declaration_diagnostic, parser};
 use std::path::Path;
 
 #[test]
+fn unfinished_top_level_body_points_after_equals_and_does_not_guess_nested_errors() {
+    for body in ["main =\n", "main =", "greet name =\n\n", "main =   \n"] {
+        let source = format!("module Main exposing (..)\n{body}");
+        let error = parser::parse(&source).unwrap_err();
+        let explanation = error.splitn(3, ':').nth(2).unwrap().trim();
+        let report = declaration_diagnostic::unfinished_definition(
+            &source,
+            "Main",
+            Path::new("Main.elm"),
+            explanation,
+        );
+        if !body.contains('\n') {
+            // Existing expression-context diagnostics handle this as MISSING
+            // EXPRESSION; the layout-specific report must not replace it.
+            assert!(report.is_none());
+            continue;
+        }
+        let report = report.unwrap_or_else(|| panic!("{body:?}: {error}"));
+        let problem = &report["errors"][0]["problems"][0];
+        assert_eq!(problem["title"], "UNFINISHED DEFINITION");
+        assert_eq!(
+            problem["region"]["start"]["column"],
+            body.find('=').unwrap() + 2
+        );
+        assert_eq!(problem["region"]["start"], problem["region"]["end"]);
+    }
+    for source in [
+        "main = 1",
+        "main =\n    let\n        x =\n",
+        "type alias Model =\n",
+        "main = if True then\n",
+    ] {
+        assert!(
+            declaration_diagnostic::unfinished_definition(
+                source,
+                "Main",
+                Path::new("Main.elm"),
+                "expected an indented continuation; found \"\""
+            )
+            .is_none()
+        );
+    }
+}
+
+#[test]
 fn declaration_errors_keep_keyword_ranges_and_stray_points() {
     for (body, title, width) in [
         ("", "WEIRD DECLARATION", 0),

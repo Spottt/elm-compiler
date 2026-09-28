@@ -426,3 +426,34 @@ fn offline_corrupt_metadata_fails_and_removes_only_the_manifest_even_without_sou
         assert_eq!(root.join("src").exists(), sources);
     }
 }
+
+#[test]
+fn package_name_author_and_project_have_distinct_boundaries() {
+    use planexpo_elm::package_solver::valid_name;
+    for name in [
+        "author-/project",
+        "123/project",
+        "Author/project",
+        "a-b/elm-ui",
+    ] {
+        assert!(valid_name(name), "{name}");
+    }
+    for name in [
+        "author/project-",
+        "author/Project",
+        "author/2d",
+        "a--b/project",
+        "/project",
+        "author/",
+        "author/project/extra",
+    ] {
+        assert!(!valid_name(name), "{name}");
+    }
+    assert!(valid_name(&format!(
+        "{}/{}",
+        "a".repeat(255),
+        "b".repeat(255)
+    )));
+    assert!(!valid_name(&format!("{}/project", "a".repeat(256))));
+    assert!(!valid_name(&format!("author/{}", "b".repeat(256))));
+}

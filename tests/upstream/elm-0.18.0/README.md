@@ -22,13 +22,18 @@ python3 scripts/check_upstream_parity.py \
 ```
 
 The runner verifies the hashes, then only adds a module header, in a temporary
-project. It compares acceptance by Elm **0.19.1** and by the Rust `check`
-command. Elm 0.19.1 is the reference: the 0.18 expectations are not applied
-blindly, since ten former "good" cases are now rejected (obsolete syntax,
-shadowing, old `Debug.crash`, etc.).
+project with temporary copies of the Elm caches. It compares acceptance by Elm
+**0.19.1** and by the Rust `check` command. Elm 0.19.1 is the reference: the
+0.18 expectations are not applied blindly, since ten former "good" cases are
+now rejected (obsolete syntax, shadowing, old `Debug.crash`, etc.).
 
-Result on 23 September 2026: **33/33 agree**. The runner keeps every case and
-fails on any new difference. Sources are not rewritten and errors are not ignored.
+With `--diagnostics`, it also compares the complete JSON objects reported by
+`make` and fails on any difference.
+
+Result (24 September 2026): **33/33 identical decisions and 33/33 identical
+complete JSON diagnostics** compared with Elm 0.19.1. This concerns these
+archived fixtures, not universal parity. The runner keeps every case and fails
+on any new difference; sources are not rewritten and errors are not ignored.
 
 The 0.18 JavaScript snapshots are kept as a historical reference, **not executed
 nor claimed as validated**: 0.19 output differs from 0.18. The four groups of

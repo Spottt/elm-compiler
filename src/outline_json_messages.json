@@ -1,0 +1,206 @@
+{
+  "EXPECTING A VALUE": [
+    "\nTry something like ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"this\""
+    },
+    " or ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "42"
+    },
+    " to move on to better hints!\n\n",
+    {
+      "bold": false,
+      "underline": true,
+      "color": null,
+      "string": "Note"
+    },
+    ": The JSON specification does not allow trailing commas, so you can\nsometimes get this error in arrays that have an extra comma at the end. In that\ncase, remove that last comma or add another array entry after it!"
+  ],
+  "EXTRA COMMA": [
+    "\nI saw a comma right before I got stuck here, so I was expecting to see a field\nname like ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"type\""
+    },
+    " or ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"dependencies\""
+    },
+    " next.\n\nThis error is commonly caused by trailing commas in JSON objects. Those are\nactually disallowed by <https://json.org> so check the previous line for a\ntrailing comma that may need to be deleted.\n\n",
+    {
+      "bold": false,
+      "underline": true,
+      "color": null,
+      "string": "Note"
+    },
+    ": Here is an example of a valid JSON object for reference:\n\n    {\n      ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"name\""
+    },
+    ": ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"Tom\""
+    },
+    ",\n      ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"age\""
+    },
+    ": ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "42"
+    },
+    "\n    }\n\nNotice that (1) the field names are in double quotes and (2) there is no\ntrailing comma after the last entry. Both are strict requirements in JSON!"
+  ],
+  "EXPECTING COLON": [
+    "\nI was expecting to see a colon next.\n\n",
+    {
+      "bold": false,
+      "underline": true,
+      "color": null,
+      "string": "Note"
+    },
+    ": Here is an example of a valid JSON object for reference:\n\n    {\n      ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"name\""
+    },
+    ": ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"Tom\""
+    },
+    ",\n      ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"age\""
+    },
+    ": ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "42"
+    },
+    "\n    }\n\nNotice that (1) the field names are in double quotes and (2) there is no\ntrailing comma after the last entry. Both are strict requirements in JSON!"
+  ],
+  "UNFINISHED OBJECT": [
+    "\nI was expecting to see a comma or a closing curly brace next.\n\nIs a comma missing on the previous line? Is an array missing a closing square\nbracket? It is often something tricky like that!\n\n",
+    {
+      "bold": false,
+      "underline": true,
+      "color": null,
+      "string": "Note"
+    },
+    ": Here is an example of a valid JSON object for reference:\n\n    {\n      ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"name\""
+    },
+    ": ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"Tom\""
+    },
+    ",\n      ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "\"age\""
+    },
+    ": ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "42"
+    },
+    "\n    }\n\nNotice that (1) the field names are in double quotes and (2) there is no\ntrailing comma after the last entry. Both are strict requirements in JSON!"
+  ],
+  "UNFINISHED ARRAY": [
+    "\nI was expecting to see a comma or a closing square bracket next.\n\nIs a comma missing on the previous line? It is often something like that!"
+  ],
+  "ENDLESS STRING": [
+    "\nStrings look like ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "GREEN",
+      "string": "\"this\""
+    },
+    " with double quotes on each end. Is the closing double\nquote missing in your code?"
+  ],
+  "UNKNOWN ESCAPE": [
+    "\nValid escape characters include:\n\n",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "yellow",
+      "string": "    \\\"\n    \\\\\n    \\/\n    \\b\n    \\f\n    \\n\n    \\r\n    \\t\n    \\u003D"
+    },
+    "\n\nDo you want one of those instead? Maybe you need \\\\ to escape a backslash?"
+  ],
+  "BAD HEX ESCAPE": [
+    "\nValid hex escapes in JSON are between ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "GREEN",
+      "string": "\\u0000"
+    },
+    " and ",
+    {
+      "bold": false,
+      "underline": false,
+      "color": "GREEN",
+      "string": "\\uFFFF"
+    },
+    " and always have exactly\nfour digits."
+  ],
+  "BAD NUMBER": [
+    "\nTry deleting the leading zeros?"
+  ],
+  "UNEXPECTED NUMBER": [
+    "\nI do not accept floating point numbers like 3.1415 right now. That kind of JSON\nvalue is not needed for any of the uses that Elm has for now."
+  ],
+  "JSON PROBLEM": [
+    "\nI am not really sure what is wrong. This sometimes means there is extra stuff\nafter a valid JSON value?"
+  ],
+  "UNEXPECTED CONTROL CHARACTER": [
+    "\nThese are characters that represent tabs, backspaces, newlines, and a bunch of\nother invisible characters. They all come before 20 in the ASCII range, and they\nare disallowed by the JSON specificaiton. Maybe a copy/paste added one of these\ninvisible characters to your JSON?"
+  ]
+}

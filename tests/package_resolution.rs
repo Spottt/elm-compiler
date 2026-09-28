@@ -278,3 +278,117 @@ fn unsatisfiable_constraints_distinguish_online_and_offline_registry() {
         assert_eq!(report["path"], "elm.json");
     }
 }
+
+#[test]
+fn all_download_failures_are_retained_without_publishing_success_caches() {
+    let project = tempfile::tempdir().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    cache(home.path(), &["1.0.0"]);
+    let first = home.path().join("0.19.1/packages/author/pkg/1.0.0");
+    let second = home.path().join("0.19.1/packages/author/second/1.0.0");
+    fs::create_dir_all(&second).unwrap();
+    let metadata = fs::read_to_string(first.join("elm.json")).unwrap();
+    fs::write(
+        second.join("elm.json"),
+        metadata.replace("author/pkg", "author/second"),
+    )
+    .unwrap();
+    fs::remove_dir(first.join("src")).unwrap();
+    fs::write(
+        home.path().join("0.19.1/packages/registry.dat"),
+        Registry::from_json(&json!({"author/pkg":["1.0.0"],"author/second":["1.0.0"]}))
+            .unwrap()
+            .encode()
+            .unwrap(),
+    )
+    .unwrap();
+    let path = manifest(project.path());
+    let mut config: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    config["dependencies"]["author/second"] = json!("1.0.0 <= v < 2.0.0");
+    fs::write(&path, config.to_string()).unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let worker = thread::spawn(move || {
+        for route in [
+            "/all-packages/since/2",
+            "/packages/author/pkg/1.0.0/endpoint.json",
+            "/packages/author/second/1.0.0/endpoint.json",
+        ] {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+            let mut stream = loop {
+                match listener.accept() {
+                    Ok((stream, _)) => break stream,
+                    Err(e)
+                        if e.kind() == std::io::ErrorKind::WouldBlock
+                            && std::time::Instant::now() < deadline =>
+                    {
+                        thread::sleep(std::time::Duration::from_millis(5))
+                    }
+                    Err(e) => panic!("missing request {route}: {e}"),
+                }
+            };
+            // Windows inherits the listener nonblocking mode on accepted sockets.
+            stream.set_nonblocking(false).unwrap();
+            stream
+                .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                .unwrap();
+            let mut request = Vec::new();
+            while !request.ends_with(b"\r\n\r\n") {
+                let mut byte = [0];
+                stream.read_exact(&mut byte).unwrap();
+                request.push(byte[0]);
+            }
+            assert!(String::from_utf8(request).unwrap().contains(route));
+            let status = if route.starts_with("/all-packages") {
+                "200 OK"
+            } else {
+                "503 Unavailable"
+            };
+            write!(
+                stream,
+                "HTTP/1.1 {status}\r\nContent-Length: 2\r\nConnection: close\r\n\r\n[]"
+            )
+            .unwrap();
+        }
+    });
+    let outcome =
+        planexpo_elm::package_resolution::resolve_downloads_with(&path, home.path(), || {
+            PackageNetwork::new(&url)
+        })
+        .unwrap();
+    worker.join().unwrap();
+    assert_eq!(outcome.selected.len(), 2);
+    assert_eq!(outcome.failures.len(), 2);
+    for error in outcome.failures.values() {
+        assert_eq!(
+            planexpo_elm::dependency_error::report_encoded(error).unwrap()["title"],
+            "PROBLEM DOWNLOADING PACKAGE"
+        );
+    }
+    let error = planexpo_elm::dependency_build::verify_downloads_with_progress(
+        &path,
+        home.path(),
+        &outcome.selected,
+        false,
+        true,
+        &outcome.failures,
+    )
+    .unwrap_err();
+    assert_eq!(&error, outcome.failures.values().next().unwrap());
+    for file in ["dependencies-v1.json", "dependencies-built-v1.json"] {
+        assert!(
+            !project
+                .path()
+                .join("elm-stuff/planexpo-rust")
+                .join(file)
+                .exists()
+        );
+    }
+    assert_eq!(
+        fs::read_to_string(first.join("elm.json")).unwrap(),
+        metadata
+    );
+    assert!(!first.join("src").exists());
+    assert!(!second.join("src").exists());
+}

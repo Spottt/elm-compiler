@@ -69,6 +69,30 @@ fn wrapped_integer_patterns_share_their_canonical_value() {
     check("f x = case x of\n    18446744073709551616 -> ()\n    _ -> ()").unwrap();
     for literal in ["18446744073709551616", "0x10000000000000000"] {
         let source = format!("f x = case x of\n    {literal} -> ()\n    0 -> ()\n    _ -> ()");
-        assert!(check(&source).unwrap_err().contains("redundant"), "{source}");
+        assert!(
+            check(&source).unwrap_err().contains("redundant"),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn unrelated_unions_do_not_change_nested_coverage() {
+    let unused = format!(
+        "type Unused = {}\n",
+        (0..1000)
+            .map(|n| format!("Unused{n}"))
+            .collect::<Vec<_>>()
+            .join(" | ")
+    );
+    for branches in [
+        "Box A -> ()",
+        "Box A -> ()\n    Box B -> ()",
+        "_ -> ()\n    Box A -> ()",
+    ] {
+        let source = format!(
+            "type Choice = A | B\ntype Box = Box Choice\nf x = case x of\n    {branches}\n"
+        );
+        assert_eq!(check(&source), check(&format!("{source}{unused}")));
     }
 }

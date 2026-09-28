@@ -1,8 +1,8 @@
 name: CI and release
-# Every push and pull request builds and tests the four release binaries and
+# Every push and pull request builds and tests the five release binaries and
 # assembles the npm tarball. Pushing a tag `v<version>` additionally publishes
-# that exact tarball to npm (behind the protected `npm-publish` environment)
-# and attaches it, with the raw binaries, to a GitHub Release.
+# that exact tarball to npm (through the `npm-publish` environment, restricted
+# to v* tags) and attaches it, with the raw binaries, to a GitHub Release.
 on:
   push:
     branches: [main]
@@ -18,27 +18,29 @@ jobs:
       matrix:
         include:
           - {os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, package: linux-x64}
-          - {os: ubuntu-22.04, target: aarch64-unknown-linux-gnu, package: linux-arm64}
+          - {os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, package: linux-arm64}
           - {os: macos-14, target: x86_64-apple-darwin, package: darwin-x64}
           - {os: macos-14, target: aarch64-apple-darwin, package: darwin-arm64}
+          - {os: windows-2022, target: x86_64-pc-windows-msvc, package: win32-x64}
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: rustup toolchain install 1.98.1 --profile minimal --component clippy --target ${{ matrix.target }}
-      - if: matrix.package == 'linux-arm64'
-        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
       - run: cargo +1.98.1 test --locked --no-fail-fast
       - run: cargo +1.98.1 clippy --locked --all-targets -- -D warnings
-      - run: node --test distribution/*.test.mjs
+      # pinned.test.mjs checks Planexpo's Makefile, outside the standalone repo.
+      - run: node --test distribution/package.test.mjs
       - run: cargo +1.98.1 build --locked --release --target ${{ matrix.target }}
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
       - run: |
           mkdir -p artifacts/${{ matrix.package }}
-          cp target/${{ matrix.target }}/release/planexpo-elm artifacts/${{ matrix.package }}/planexpo-elm
+          cp target/${{ matrix.target }}/release/planexpo-elm${{ matrix.package == 'win32-x64' && '.exe' || '' }} artifacts/${{ matrix.package }}/
+      - run: artifacts/${{ matrix.package }}/planexpo-elm${{ matrix.package == 'win32-x64' && '.exe' || '' }} --compiler-help
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.package }}
@@ -56,18 +58,24 @@ jobs:
           path: artifacts
           merge-multiple: true
       - run: node distribution/stage-release.mjs artifacts release
-      - run: chmod +x release/platforms/*/planexpo-elm
+      - run: chmod +x release/platforms/*/planexpo-elm*
       - run: node release/verify.cjs
       - run: node release/bin/planexpo-elm.cjs --version
       - run: npm pack ./release
-      # Smoke test: install the tarball in an empty project and compile an Elm file.
+      # Smoke test: install the tarball in an empty project and compile an Elm program.
       - run: |
-          mkdir smoke && cd smoke && npm init -y >/dev/null
+          mkdir -p smoke/src && cd smoke && npm init -y >/dev/null
           npm install --no-audit --no-fund ../*.tgz
           npx planexpo-elm --version
+          printf '{"type":"application","source-directories":["src"],"elm-version":"0.19.1","dependencies":{"direct":{"elm/core":"1.0.5","elm/html":"1.0.0"},"indirect":{"elm/json":"1.1.3","elm/virtual-dom":"1.0.3"}},"test-dependencies":{"direct":{},"indirect":{}}}' > elm.json
+          printf 'module Main exposing (main)\nimport Html\nmain = Html.text "smoke"\n' > src/Main.elm
+          npx planexpo-elm make src/Main.elm --output=main.js
+          grep -q smoke main.js
       - run: |
-          for platform in linux-x64 linux-arm64 darwin-x64 darwin-arm64; do
-            tar -czf "planexpo-elm-${GITHUB_REF_NAME//\//-}-$platform.tar.gz" -C release/platforms/$platform planexpo-elm
+          version="${GITHUB_REF_NAME//\//-}"
+          for dir in release/platforms/*/; do
+            platform=$(basename "$dir")
+            tar -czf "planexpo-elm-$version-$platform.tar.gz" -C "$dir" .
           done
           sha256sum *.tgz planexpo-elm-*.tar.gz > SHA256SUMS
       - uses: actions/upload-artifact@v4
@@ -93,7 +101,7 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      # Versions with a pre-release suffix (0.4.0-beta.1) go to the `next` dist-tag.
+      # Versions with a pre-release suffix (0.3.0-beta.1) go to the `next` dist-tag.
       - run: |
           tag=latest
           case "$GITHUB_REF_NAME" in *-*) tag=next ;; esac

@@ -23,13 +23,16 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
         );
         return Ok(());
     }
-    if args.len() > 1 {
-        return Err("install expects one package name, for example: elm install elm/http".into());
-    }
+    crate::global_cli::reject_flags(&args)?;
     if let Some(package) = args.first()
         && !planexpo_elm::package_solver::valid_name(package)
     {
-        return Err(format!("invalid package name {package}"));
+        return Err(crate::diff::argument_error(package, true)?);
+    }
+    if args.len() > 1 {
+        // The zero-argument command shape is tried first by Terminal.Chomp.
+        // Malformed package arguments outrank it; otherwise all extras remain.
+        return Err(crate::global_cli::extra_arguments(&args));
     }
     let cwd = env::current_dir().map_err(|e| e.to_string())?;
     let root = cwd.ancestors().find(|p| p.join("elm.json").is_file()).ok_or_else(|| report("NEW PROJECT?", "Are you trying to start a new project? Try this command instead:\n\n    elm init\n\nIt will help you get started!"))?;
@@ -120,7 +123,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
             .map_err(|e| e.to_string())?
             == 0
         {
-            return Err("end of input while waiting for confirmation".into());
+            return Err(crate::diagnostic::confirmation_eof());
         }
         match answer.strip_suffix('\n').unwrap_or(&answer) {
             "" | "Y" | "y" => break,

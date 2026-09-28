@@ -7,7 +7,7 @@ pub fn emit(kind: Kind, raw: &str, mode: Mode) -> Result<String, String> {
     match kind {
         Kind::String | Kind::Char => {
             let value = format!("'{}'", canonical_text(raw)?);
-            if kind == Kind::Char && matches!(mode, Mode::Development) {
+            if kind == Kind::Char && !matches!(mode, Mode::Production) {
                 Ok(format!("_Utils_chr({value})"))
             } else {
                 Ok(value)
@@ -28,7 +28,11 @@ pub fn emit(kind: Kind, raw: &str, mode: Mode) -> Result<String, String> {
                 return Ok(raw.into());
             }
             let value = integer_value(raw)?;
-            Ok(if value < 0 { format!("({value})") } else { value.to_string() })
+            Ok(if value < 0 {
+                format!("({value})")
+            } else {
+                value.to_string()
+            })
         }
         _ => Err("expected a number, string or character literal".into()),
     }
@@ -86,7 +90,9 @@ pub(crate) fn canonical_text(raw: &str) -> Result<String, String> {
 /// Parse.Number accumulates decimal and hexadecimal integers in a Haskell Int.
 pub(crate) fn integer_value(raw: &str) -> Result<i64, String> {
     let (digits, radix) = raw.strip_prefix("0x").map_or((raw, 10), |s| (s, 16));
-    if digits.is_empty() { return Err("empty integer literal".into()); }
+    if digits.is_empty() {
+        return Err("empty integer literal".into());
+    }
     digits.chars().try_fold(0i64, |value, c| {
         let digit = c.to_digit(radix).ok_or("invalid integer literal")?;
         Ok(value.wrapping_mul(radix as i64).wrapping_add(digit as i64))

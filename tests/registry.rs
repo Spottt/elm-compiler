@@ -85,10 +85,16 @@ fn registry_json_uses_the_official_package_name_grammar() {
         "Elm/core",
         "7team/a1",
         "a-b/c-d",
+        "a-/core",
         &format!("{}/a", "a".repeat(255)),
     ] {
         assert!(
             Registry::from_json(&json!({name:["1.0.0"]})).is_ok(),
+            "{name}"
+        );
+        let registry = Registry::from_json(&json!({})).unwrap();
+        assert!(
+            registry.updated(&json!([format!("{name}@1.0.0")])).is_ok(),
             "{name}"
         );
     }
@@ -96,7 +102,6 @@ fn registry_json_uses_the_official_package_name_grammar() {
         "a/Core",
         "a/1core",
         "-a/core",
-        "a-/core",
         "a--b/core",
         "a/-core",
         "a/core-",

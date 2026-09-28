@@ -1,29 +1,44 @@
 use planexpo_elm::{lexer::lex, module::header};
 use std::{env, fs, process::ExitCode, time::Instant};
 mod diagnostic;
+mod bump;
+mod diff;
 mod init;
 mod install;
 mod make;
+mod make_worker;
+mod make_cli;
+mod global_cli;
+mod publish;
+mod reactor;
+mod reactor_cli;
 mod repl;
 mod repl_completion;
-mod repl_history;
 #[cfg(unix)]
 mod repl_evaluation;
+mod repl_history;
 fn run() -> Result<(), String> {
-    let mut args = env::args().skip(1);
+    let arguments: Vec<_> = env::args().skip(1).collect();
+    if global_cli::help_or_version(&arguments) { return Ok(()); }
+    let mut args = arguments.into_iter();
     let command = args
         .next()
         .ok_or("usage: planexpo-elm scan <source.elm>...")?;
-    if command == "--version" {
-        println!("{}", env!("CARGO_PKG_VERSION"));
-        return Ok(());
-    }
-    if matches!(command.as_str(), "--help" | "help") {
+    if command == "--compiler-help" {
         println!(
-            "planexpo-elm {} — experimental Elm 0.19.1 compiler\ninit (create an Elm application)\nrepl [--no-colors] [--interpreter <path>] (interactive session)\ninstall <author/package> (add a dependency)\nmake <entry.elm> [--output <output.js|index.html>] [--report=json] [--no-cache] [--optimize] [--incremental]\nmake <source.elm>... --output <output.js|/dev/null>\nmake [--docs <docs.json>] (package exposed modules)\nInspection: scan, parse, graph, operators, names, declarations, check, codegen-check, link-js\nProfiling: profile <elm.json> <entry.elm> (production, no output cache)\nExperimental production runtime: link-js-prod <elm.json> <entry.elm> <output.js>",
+            "planexpo-elm {} — experimental Elm 0.19.1 compiler\npublish (publish a package)\nbump (update the package version from API changes)\ndiff [<package>] [<old-version>] [<new-version>] (compare public APIs)\ninit (create an Elm application)\nrepl [--no-colors] [--interpreter <path>] (interactive session)\ninstall <author/package> (add a dependency)\nreactor [--port <number>] (browse and compile local files)\nmake <entry.elm> [--output <output.js|index.html>] [--report=json] [--no-cache] [--optimize|--debug] [--incremental]\nmake <source.elm>... --output <output.js|/dev/null>\nmake [--docs <docs.json>] (package exposed modules)\nInspection: scan, parse, graph, operators, names, declarations, check, codegen-check, link-js\nProfiling: profile <elm.json> <entry.elm> [--incremental] [--development] (no output cache)\nExperimental production runtime: link-js-prod <elm.json> <entry.elm> <output.js>",
             env!("CARGO_PKG_VERSION")
         );
         return Ok(());
+    }
+    if command == "--internal-make-worker" {
+        if args.next().is_some() { return Err("unexpected worker argument".into()); }
+        return make_worker::run();
+    }
+    if command == "publish" { return publish::run(args.collect()); }
+    if command == "bump" { return bump::run(args.collect()); }
+    if command == "diff" {
+        return diff::run(args.collect());
     }
     if command == "init" {
         return init::run(args.collect());
@@ -31,6 +46,7 @@ fn run() -> Result<(), String> {
     if command == "install" {
         return install::run(args.collect());
     }
+    if command == "reactor" { return reactor::run(args.collect()); }
     if command == "make" {
         return make::run(args.collect());
     }
@@ -63,15 +79,17 @@ fn run() -> Result<(), String> {
         } else {
             None
         };
-        let incremental_profile = if command == "profile" {
-            match args.next().as_deref() {
-                None => false,
-                Some("--incremental") => true,
-                Some(_) => return Err("profile only supports --incremental".into()),
+        let mut incremental_profile = false;
+        let mut development_profile = false;
+        if command == "profile" {
+            for option in args.by_ref() {
+                match option.as_str() {
+                    "--incremental" if !incremental_profile => incremental_profile = true,
+                    "--development" if !development_profile => development_profile = true,
+                    _ => return Err("profile supports --incremental and --development once each".into()),
+                }
             }
-        } else {
-            false
-        };
+        }
         if args.next().is_some() {
             return Err("unexpected graph argument".into());
         }
@@ -97,7 +115,11 @@ fn run() -> Result<(), String> {
                 | "profile"
         ) {
             if command == "profile" {
-                let mode = planexpo_elm::kernel::Mode::Production;
+                let mode = if development_profile {
+                    planexpo_elm::kernel::Mode::Development
+                } else {
+                    planexpo_elm::kernel::Mode::Production
+                };
                 let report = if incremental_profile {
                     let executable = env::current_exe().map_err(|e| e.to_string())?;
                     let identity = planexpo_elm::cache::compiler_identity(&executable)
@@ -121,19 +143,23 @@ fn run() -> Result<(), String> {
                             "module": m.module, "parse_ms": m.parse_ms,
                             "inference_ms": m.inference_ms, "generation_ms": m.generation_ms,
                             "interface_ms":m.interface_ms,
+                            "preparation_ms":m.preparation_ms,
+                            "validation_ms":m.validation_ms,
+                            "finalization_ms":m.finalization_ms,
                             "compaction_ms": m.compaction_ms, "total_ms": m.total_ms,
                         })
                     })
                     .collect();
                 let field_layout_ms = report.field_layout_ms;
+                let cached_generated_modules = report.cached_generated_modules;
                 let cached_type_modules = report.cached_type_modules;
                 let linking_started = Instant::now();
                 let javascript = planexpo_elm::linker::assemble(&graph, report)?;
                 println!(
                     "{}",
                     serde_json::json!({
-                        "mode":"Production", "field_layout_ms":field_layout_ms,
-                        "cached_type_modules":cached_type_modules,
+                        "mode":format!("{mode:?}"), "field_layout_ms":field_layout_ms,
+                        "cached_type_modules":cached_type_modules, "cached_generated_modules":cached_generated_modules,
                         "linking_ms":linking_started.elapsed().as_secs_f64()*1000.0,
                         "elapsed_ms":start.elapsed().as_secs_f64()*1000.0,
                         "javascript_bytes":javascript.len(), "modules":modules,
@@ -192,7 +218,7 @@ fn run() -> Result<(), String> {
         return Ok(());
     }
     if command != "scan" && command != "parse" {
-        return Err("unknown command; use --help for available commands".into());
+        return Err(global_cli::unknown(&command));
     }
     let start = Instant::now();
     let mut files = 0;
@@ -226,13 +252,27 @@ fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
+            // Terminal argument errors are already complete CLI documents.
+            // In particular an unsupported --report flag must not enable JSON.
+            if let Some(message) = e.strip_prefix("ELM_CLI_RAW:") {
+                use std::io::IsTerminal;
+                let rendered = diagnostic::proxy_cli_error(
+                    message,
+                    &env::args().nth(1).unwrap_or_default(),
+                    std::io::stderr().is_terminal(),
+                );
+                eprint!("{}", rendered.as_deref().unwrap_or(message));
+                return ExitCode::FAILURE;
+            }
             let args: Vec<_> = env::args().collect();
-            if args.get(1).is_none_or(|command| command != "repl")
-                && (args.iter().any(|s| s == "--report=json")
-                    || args
-                        .windows(2)
-                        .any(|s| s[0] == "--report" && s[1] == "json"))
-            {
+            let json_report = if args.get(1).is_some_and(|command| command == "make") {
+                make::json_report(&args[2..])
+            } else {
+                args.get(1).is_none_or(|command| command != "repl")
+                    && (args.iter().any(|s| s == "--report=json")
+                        || args.windows(2).any(|s| s[0] == "--report" && s[1] == "json"))
+            };
+            if json_report {
                 eprintln!("{}", diagnostic::report(&e));
             } else {
                 eprintln!("{}", diagnostic::terminal(&e));

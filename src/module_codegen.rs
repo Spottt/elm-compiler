@@ -8,13 +8,13 @@ use crate::{
     names::{Binding, Resolved, Space, SymbolId, Symbols},
     pattern_codegen,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::{borrow::Borrow, collections::{BTreeMap, BTreeSet, HashMap}, rc::Rc};
 #[derive(Debug, Clone)]
 pub struct Registration {
     pub javascript: String,
     pub dependencies: BTreeSet<SymbolId>,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Definition {
     pub symbol: SymbolId,
     pub javascript: String,
@@ -42,9 +42,22 @@ pub fn emit_with_ports(
     layouts: &Layouts,
     options: (Mode, Option<&PortConverters>),
 ) -> Result<Vec<Definition>, String> {
-    let (mode, ports) = options;
-    // Prove exhaustiveness before treating the final alternative as default.
+    // Standalone callers must prove coverage before using a default branch.
     crate::coverage::check(ast, resolved, symbols)?;
+    emit_after_coverage(ast, module, resolved, symbols, layouts, options)
+}
+
+/// Internal pipeline entry: the caller must have successfully checked coverage
+/// for this exact AST and resolution. Analysis does this even on a type-cache hit.
+pub(crate) fn emit_after_coverage(
+    ast: &Syntax<'_>,
+    module: &str,
+    resolved: &Resolved,
+    symbols: &Symbols,
+    layouts: &Layouts,
+    options: (Mode, Option<&PortConverters>),
+) -> Result<Vec<Definition>, String> {
+    let (mode, ports) = options;
     let final_patterns: BTreeSet<_> = ast
         .expressions
         .iter()
@@ -438,10 +451,24 @@ fn wrap_function(
 /// Order a set of emitted definitions across module boundaries. Missing
 /// dependencies remain external (kernel and entry-point linking handles them).
 pub fn order(definitions: Vec<Definition>) -> Result<Vec<Definition>, String> {
-    let indices: BTreeMap<_, _> = definitions
+    order_using(definitions, |definition| definition)
+}
+
+/// Checkpoints share immutable definitions; only cycle initialization needs
+/// copy-on-write, otherwise linking must leave those snapshots untouched.
+pub(crate) fn order_shared(definitions: Vec<Rc<Definition>>) -> Result<Vec<Rc<Definition>>, String> {
+    order_using(definitions, Rc::make_mut)
+}
+
+fn order_using<D: Borrow<Definition>>(
+    definitions: Vec<D>,
+    edit: fn(&mut D) -> &mut Definition,
+) -> Result<Vec<D>, String> {
+    // Only lookup by symbol; graph traversal still uses sorted edges.
+    let indices: HashMap<_, _> = definitions
         .iter()
         .enumerate()
-        .map(|(i, d)| (d.symbol, i))
+        .map(|(i, d)| (Borrow::<Definition>::borrow(d).symbol, i))
         .collect();
     if indices.len() != definitions.len() {
         return Err("duplicate generated definition".into());
@@ -449,7 +476,7 @@ pub fn order(definitions: Vec<Definition>) -> Result<Vec<Definition>, String> {
     let edges: Vec<BTreeSet<usize>> = definitions
         .iter()
         .map(|d| {
-            d.dependencies
+            Borrow::<Definition>::borrow(d).dependencies
                 .iter()
                 .filter_map(|id| indices.get(id).copied())
                 .collect()
@@ -459,17 +486,17 @@ pub fn order(definitions: Vec<Definition>) -> Result<Vec<Definition>, String> {
     let mut definitions: Vec<_> = definitions.into_iter().map(Some).collect();
     let mut result = Vec::new();
     for mut group in groups {
-        group.sort_by_key(|i| !definitions[*i].as_ref().unwrap().function);
+        group.sort_by_key(|i| !Borrow::<Definition>::borrow(definitions[*i].as_ref().unwrap()).function);
         let mut initialization = String::new();
         for index in group {
             let mut definition = definitions[index].take().unwrap();
-            if let Some(code) = definition.cycle_initialization.take() {
-                initialization.push_str(&code);
+            if Borrow::<Definition>::borrow(&definition).cycle_initialization.is_some() {
+                initialization.push_str(&edit(&mut definition).cycle_initialization.take().unwrap());
             }
             result.push(definition);
         }
-        if let Some(last) = result.last_mut() {
-            last.javascript.push_str(&initialization);
+        if !initialization.is_empty() && let Some(last) = result.last_mut() {
+            edit(last).javascript.push_str(&initialization);
         }
     }
     Ok(result)
@@ -526,4 +553,35 @@ fn cyclic_values(
         }
     }
     Ok(cyclic)
+}
+
+#[cfg(test)]
+mod shared_definition_tests {
+    use super::*;
+    use std::rc::Rc;
+    #[test]
+    fn shared_order_preserves_snapshots_and_does_not_append_cycle_initializers_twice() {
+        let definition = Rc::new(Definition {
+            symbol: SymbolId(0), javascript: "var value;".into(),
+            dependencies: BTreeSet::from([SymbolId(0)]), function: false,
+            registration: None, cycle_initialization: Some("value = 1;".into()),
+        });
+        for _ in 0..2 {
+            let ordered = order_shared(vec![definition.clone()]).unwrap();
+            assert_eq!(ordered[0].javascript, "var value;value = 1;");
+            assert!(ordered[0].cycle_initialization.is_none());
+            assert_eq!(definition.javascript, "var value;");
+            assert_eq!(definition.cycle_initialization.as_deref(), Some("value = 1;"));
+        }
+    }
+    #[test]
+    fn shared_order_retains_immutable_function_definitions() {
+        let definition = Rc::new(Definition {
+            symbol: SymbolId(0), javascript: "function value(){return 1;}".into(),
+            dependencies: BTreeSet::new(), function: true,
+            registration: None, cycle_initialization: None,
+        });
+        let ordered = order_shared(vec![definition.clone()]).unwrap();
+        assert!(Rc::ptr_eq(&ordered[0], &definition));
+    }
 }

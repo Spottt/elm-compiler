@@ -55,12 +55,12 @@ pub fn plan(
     let mut pending = vec![(root, value.to_string())];
     let mut conditions = Vec::new();
     let mut bindings = Vec::new();
-    let cons = if matches!(mode, Mode::Development) {
+    let cons = if !matches!(mode, Mode::Production) {
         "'::'"
     } else {
         "1"
     };
-    let nil = if matches!(mode, Mode::Development) {
+    let nil = if !matches!(mode, Mode::Production) {
         "'[]'"
     } else {
         "0"

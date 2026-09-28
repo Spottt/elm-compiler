@@ -21,7 +21,7 @@ numbers will differ; please share them in an issue._
 <p align="center"><img src="docs/benchmark.png" width="720" alt="Cold build time, peak memory and rebuild time for Elm 0.19.1, Elm 0.19.2 and this compiler on a 677-module application"></p>
 
 > **Status: alpha.** It compiles real applications that pass their test suites
-> and aims at full Elm 0.19.1 compatibility, with a few deliberate differences
+> and aims at full compatibility with Elm 0.19.1 and 0.19.2, with a few deliberate differences
 > listed below. Read [Compatibility](#compatibility) before relying on it.
 
 This project is not affiliated with or endorsed by the Elm project.
@@ -128,11 +128,14 @@ absolute path of the native executable.
 
 ## Compatibility
 
-Target: **Elm 0.19.1** (elm/compiler tag `0.19.1`, commit `c9aefb6`), including
-error messages: diagnostics are compared with the official binary, text and
-JSON, by the differential checks in `scripts/`. Applications declaring
-`"elm-version": "0.19.2"` are accepted too: 0.19.2 is a patch release of the
-same language. Differential checks against the 0.19.2 binary are not done yet.
+Target: **Elm 0.19**, the language shared by 0.19.1 and 0.19.2. Projects
+declaring `"elm-version": "0.19.1"` or `"0.19.2"` are both accepted.
+
+The reference implementation for the differential checks in `scripts/` is Elm
+0.19.1 (elm/compiler tag `0.19.1`, commit `c9aefb6`): diagnostics are compared
+with the official binary, text and JSON. The same checks have not been run
+systematically against the 0.19.2 binary yet; the defects listed below were
+re-checked against it one by one.
 
 Implemented: `init`, `install`, `make` (JavaScript/HTML output, several entry
 points, `--optimize`, `--debug`, `--docs`, `--report=json`), `repl`, `reactor`,
@@ -140,18 +143,20 @@ points, `--optimize`, `--debug`, `--docs`, `--report=json`), `repl`, `reactor`,
 package download and verification; ports, effect managers, kernel code, WebGL
 shaders.
 
-Deliberate differences — cases where official Elm 0.19.1 has a known defect
-that this compiler does not reproduce:
+Deliberate differences — cases where official Elm has a known defect that this
+compiler does not reproduce (status in 0.19.2 re-checked on 2026-09-28):
 
 - It rejects a recursive-capture program that official Elm accepts although it
-  sends `undefined` through a port typed `Int`.
+  sends `undefined` through a port typed `Int` (0.19.1 and 0.19.2).
 - It fixes the negation of overflowing integer literals, for which official Elm
-  emits invalid JavaScript.
+  emits invalid JavaScript (0.19.1 and 0.19.2).
 - TLS is stricter when downloading packages: certificates restricted to client
-  authentication, or with unknown critical extensions, are refused.
+  authentication are refused (accepted by 0.19.1 and 0.19.2), as are
+  certificates with unknown critical extensions (accepted by 0.19.1 only).
 - `elm.json` errors reported as JSON are always valid JSON: official Elm can
-  emit unescaped control characters, overflow its line coordinates or time out
-  on some malformed manifests.
+  emit unescaped control characters (0.19.1 and 0.19.2) or crash on some
+  first-line errors (0.19.1 only), and can time out on some malformed one-line
+  manifests (0.19.1 and 0.19.2).
 
 Compatibility is checked by differential tests against the official binary, by
 the historical Elm test programs in `tests/upstream/` (33/33 identical decisions

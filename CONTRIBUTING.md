@@ -1,7 +1,7 @@
 # Contributing
 
 Thanks for helping! The most valuable contributions right now are
-**compatibility reports**: real Elm code that official Elm 0.19.1 handles
+**compatibility reports**: real Elm code that official Elm (0.19.1 or 0.19.2) handles
 differently from this compiler.
 
 ## Reporting a bug
@@ -10,7 +10,7 @@ Open an issue with:
 
 1. The command you ran and its full output (`--report=json` output helps).
 2. A minimal `elm.json` and module(s) that reproduce the problem.
-3. What official `elm` 0.19.1 does with the same input.
+3. What official `elm` does with the same input, and which version (0.19.1 or 0.19.2).
 4. `elm --compiler-help` (first line shows the version), OS and architecture.
 
 For runtime differences, include the JavaScript behaviour you observe and the
@@ -29,9 +29,10 @@ node --test distribution/package.test.mjs
 ```
 
 `scripts/` contains differential checks that compare this compiler with the
-official `elm` 0.19.1 binary (diagnostics, runtime values, REPL, docs, package
-commands...). They are Python 3 / Node scripts; most take the official binary
-with `--elm /path/to/elm`. Run the ones related to your change.
+official `elm` binary (diagnostics, runtime values, REPL, docs, package
+commands...). The reference is 0.19.1; comparisons with 0.19.2 are welcome.
+They are Python 3 / Node scripts; most take the official binary with
+`--elm /path/to/elm`. Run the ones related to your change.
 
 CI runs exactly these commands on Linux and macOS (x64 and ARM64) and Windows
 x64 for every pull request. Some tests download Elm packages from `package.elm-lang.org`

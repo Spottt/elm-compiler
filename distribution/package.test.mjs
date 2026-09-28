@@ -106,6 +106,8 @@ test('local pack produces an installable single-platform tarball that refuses pu
         assert.equal(spawnSync('tar',['-xzf',path.join(temp,'dist',tarball),'-C',extract]).status,0);
         const pkg = path.join(extract,'package');
         for (const file of ['LICENSE','NOTICE','LICENSE-ELM','LICENSE-FONTS','checksums.json',`platforms/${process.platform}-${process.arch}/planexpo-elm`]) assert.ok(fs.existsSync(path.join(pkg,file)),file);
+        // Drop-in replacement: the package installs `elm`, with `planexpo-elm` kept as an alias.
+        assert.deepEqual(JSON.parse(fs.readFileSync(path.join(pkg,'package.json'))).bin,{elm:'bin/planexpo-elm.cjs','planexpo-elm':'bin/planexpo-elm.cjs'});
         const run = spawnSync(process.execPath,[path.join(pkg,'bin/planexpo-elm.cjs')],{encoding:'utf8',env:{...process.env,PLANEXPO_ELM_RUST_BINARY:''}});
         assert.equal(run.stdout.trim(),'local-build',run.stderr);
         assert.notEqual(spawnSync(process.execPath,[path.join(pkg,'verify.cjs')]).status,0);

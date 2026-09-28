@@ -4,6 +4,16 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org).
 
+## [0.3.0-alpha.6] - 2026-09-28
+
+### Changed
+
+- The npm package now provides the `elm` command, a drop-in replacement for the
+  official compiler (`planexpo-elm` stays as an alias). Install it instead of
+  the official `elm` package, not alongside it.
+- Standalone release archives are named `elm-compiler-<version>-<platform>.tar.gz`
+  and contain a single `elm` executable.
+
 ## [0.3.0-alpha.5] - 2026-09-28
 
 First public release, published under the `next` npm tag. Same compiler as

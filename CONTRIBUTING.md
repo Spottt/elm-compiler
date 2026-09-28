@@ -11,7 +11,7 @@ Open an issue with:
 1. The command you ran and its full output (`--report=json` output helps).
 2. A minimal `elm.json` and module(s) that reproduce the problem.
 3. What official `elm` 0.19.1 does with the same input.
-4. `planexpo-elm --version`, OS and architecture.
+4. `elm --compiler-help` (first line shows the version), OS and architecture.
 
 For runtime differences, include the JavaScript behaviour you observe and the
 expected one.

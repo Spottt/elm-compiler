@@ -37,13 +37,19 @@ Prebuilt binaries are shipped inside the npm package for:
 Alpine/musl and other targets: [build from source](#build-from-source).
 
 ```sh
-# In an Elm project
+# In an Elm project: replace the official compiler
+npm uninstall elm
 npm install --save-dev @spottt/elm-compiler
-npx planexpo-elm make src/Main.elm --output=main.js
+npx elm make src/Main.elm --output=main.js
 
 # Or without installing
 npx @spottt/elm-compiler make src/Main.elm --output=main.js
 ```
+
+The package provides the **`elm`** command, so it is a drop-in replacement:
+scripts and tools that call `elm` pick it up. Install it **instead of** the
+official `elm` npm package, not alongside it — both provide the same command.
+`planexpo-elm` is kept as an alias.
 
 The package has **no install scripts**: nothing is downloaded or compiled at
 `npm install` time. The binary for your platform is already inside the tarball
@@ -52,7 +58,8 @@ CI with [npm provenance](https://docs.npmjs.com/generating-provenance-statements
 
 Pre-releases use the `next` tag: `npm install --save-dev @spottt/elm-compiler@next`.
 
-Standalone binaries (`planexpo-elm-<version>-<platform>.tar.gz`) and a
+Standalone binaries (`elm-compiler-<version>-<platform>.tar.gz`, a single
+`elm` executable) and a
 `SHA256SUMS` file are attached to every
 [GitHub Release](https://github.com/Spottt/elm-compiler/releases).
 
@@ -61,19 +68,19 @@ Standalone binaries (`planexpo-elm-<version>-<platform>.tar.gz`) and a
 The command line mirrors `elm`, commands and flags included:
 
 ```sh
-planexpo-elm init                                   # create elm.json and src/
-planexpo-elm install elm/http                       # add a dependency
-planexpo-elm make src/Main.elm --output=main.js
-planexpo-elm make src/Main.elm --output=index.html
-planexpo-elm make src/Main.elm --optimize --output=main.js
-planexpo-elm make src/Main.elm --debug --output=main.js   # time-travelling debugger
-planexpo-elm make src/A.elm src/B.elm --output=bundle.js  # several entry points
-planexpo-elm make --docs=docs.json                  # in a package: check + docs
-planexpo-elm repl
-planexpo-elm reactor --port=8000
-planexpo-elm diff elm/json 1.0.0 1.1.3
-planexpo-elm bump
-planexpo-elm publish
+elm init                                   # create elm.json and src/
+elm install elm/http                       # add a dependency
+elm make src/Main.elm --output=main.js
+elm make src/Main.elm --output=index.html
+elm make src/Main.elm --optimize --output=main.js
+elm make src/Main.elm --debug --output=main.js   # time-travelling debugger
+elm make src/A.elm src/B.elm --output=bundle.js  # several entry points
+elm make --docs=docs.json                  # in a package: check + docs
+elm repl
+elm reactor --port=8000
+elm diff elm/json 1.0.0 1.1.3
+elm bump
+elm publish
 ```
 
 Additional `make` flags:
@@ -98,16 +105,16 @@ populated.
 
 ### With existing tooling
 
-Most tools accept a path to the compiler; point them at
-`node_modules/.bin/planexpo-elm`:
+Tools that look for `elm` in `node_modules/.bin` find it without any
+configuration when run through `npx` or npm scripts:
 
 ```sh
-npx elm-test --compiler ./node_modules/.bin/planexpo-elm
+npx elm-test
 ```
 
 ```js
-// webpack + elm-webpack-loader
-{ loader: 'elm-webpack-loader', options: { pathToElm: 'node_modules/.bin/planexpo-elm' } }
+// webpack + elm-webpack-loader: nothing to configure; or explicitly
+{ loader: 'elm-webpack-loader', options: { pathToElm: 'node_modules/.bin/elm' } }
 ```
 
 From JavaScript, `require('@spottt/elm-compiler').resolveBinary()` returns the
@@ -166,20 +173,20 @@ node distribution/pack-local.mjs --out dist
 # → dist/spottt-elm-compiler-<version>.tgz, current platform only
 cd /path/to/an/elm/project
 npm install --save-dev /path/to/elm-compiler/dist/spottt-elm-compiler-<version>.tgz
-npx planexpo-elm --version
+npx elm --version
 ```
 
 Or keep the published package and swap only the binary:
 
 ```sh
-PLANEXPO_ELM_RUST_BINARY=/path/to/elm-compiler/target/release/planexpo-elm npx planexpo-elm make src/Main.elm
+PLANEXPO_ELM_RUST_BINARY=/path/to/elm-compiler/target/release/planexpo-elm npx elm make src/Main.elm
 ```
 
 ## Repository layout
 
 | Path            | Content |
 | --------------- | ------- |
-| `src/`          | The compiler (library `planexpo_elm` + binary `planexpo-elm`). |
+| `src/`          | The compiler (library `planexpo_elm` + binary `planexpo-elm`, installed as `elm` by the npm package). |
 | `tests/`        | Rust integration tests. `tests/upstream/` holds unmodified upstream fixtures under their own licenses. |
 | `scripts/`      | Differential checks against the official `elm` binary (Python/Node). |
 | `reactor/`      | Sources and compiled assets of the `reactor` interface (from elm/compiler). |

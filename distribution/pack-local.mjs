@@ -43,7 +43,7 @@ try {
     if (packed.status !== 0) throw new Error('npm pack failed');
     const [{filename: tarball}] = JSON.parse(packed.stdout);
     console.log(`Local package for ${platform}: ${path.join(output, tarball)}`);
-    console.log(`Try it: npm install --save-dev ${path.join(output, tarball)} && npx planexpo-elm --version`);
+    console.log(`Try it: npm install --save-dev ${path.join(output, tarball)} && npx elm --version`);
 } finally {
     fs.rmSync(stage, {recursive: true, force: true});
 }

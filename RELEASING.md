@@ -33,8 +33,10 @@ never be published directly.
 ## Publishing a version
 
 1. Choose the version, following [semver](https://semver.org). Use a
-   pre-release suffix (`0.4.0-beta.1`) to publish under the `next` dist-tag
-   instead of `latest`.
+   pre-release suffix (`0.4.0-beta.1`) while the project is in alpha: it is
+   still published under `latest`, so `npm install @spottt/elm-compiler`
+   gets it. Name a version `<version>-next.N` (for example `0.4.0-next.1`) to
+   publish an experimental build under the `next` dist-tag instead.
 2. Set it in **both** `Cargo.toml` and `npm/package.json`, then run
    `cargo build` so `Cargo.lock` is updated.
 3. Update `CHANGELOG.md`, open a pull request, wait for green CI, merge.

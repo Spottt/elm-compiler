@@ -56,7 +56,9 @@ The package has **no install scripts**: nothing is downloaded or compiled at
 and its SHA-256 is recorded in `checksums.json`. Releases are published from
 CI with [npm provenance](https://docs.npmjs.com/generating-provenance-statements).
 
-Pre-releases use the `next` tag: `npm install --save-dev @spottt/elm-compiler@next`.
+Every release is published under the default `latest` tag. Experimental builds
+(versions such as `0.4.0-next.1`) use the `next` tag:
+`npm install --save-dev @spottt/elm-compiler@next`.
 
 Standalone binaries (`elm-compiler-<version>-<platform>.tar.gz`, a single
 `elm` executable) and a

@@ -4,6 +4,13 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org).
 
+## [Unreleased]
+
+### Changed
+
+- Releases are published under the npm `latest` tag by default, pre-releases
+  included; only `<version>-next.N` builds go to `next`.
+
 ## [0.3.0-alpha.6] - 2026-09-28
 
 ### Changed

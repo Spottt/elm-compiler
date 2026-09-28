@@ -104,10 +104,11 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      # Versions with a pre-release suffix (0.3.0-beta.1) go to the `next` dist-tag.
+      # Every release goes to `latest` (alphas included, while the project is in alpha);
+      # only experimental builds named `<version>-next.N` go to the `next` dist-tag.
       - run: |
           tag=latest
-          case "$GITHUB_REF_NAME" in *-*) tag=next ;; esac
+          case "$GITHUB_REF_NAME" in *-next*) tag=next ;; esac
           # npm only accepts provenance statements from public repositories.
           provenance=""
           [ "${{ github.event.repository.private }}" = "false" ] && provenance="--provenance"

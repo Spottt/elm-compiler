@@ -169,7 +169,7 @@ pub(crate) fn validate_project(
                     .as_str()
                     .ok_or("missing elm-version")?,
             )?;
-            if elm != package_solver::Version::ELM {
+            if !package_solver::Version::APPLICATION.contains(&elm) {
                 return Err(crate::dependency_error::application_version(elm));
             }
             Ok(Some(crate::dependencies::application_versions(config)?))

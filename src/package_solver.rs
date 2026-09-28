@@ -8,6 +8,9 @@ use std::{collections::BTreeMap, fs, path::Path};
 pub struct Version(pub [u16; 3]);
 impl Version {
     pub const ELM: Self = Self([0, 19, 1]);
+    /// Application manifests accepted by this compiler. Elm 0.19.2 is a patch
+    /// release of the same language, so projects pinned to either compile unchanged.
+    pub const APPLICATION: [Self; 2] = [Self([0, 19, 1]), Self([0, 19, 2])];
     pub fn parse(text: &str) -> Result<Self, String> {
         let parts = text.split('.').collect::<Vec<_>>();
         if parts.len() != 3

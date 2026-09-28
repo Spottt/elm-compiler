@@ -460,3 +460,24 @@ fn exposed_provider_index_does_not_make_indirect_packages_direct_imports() {
     f.module("Main", "import Public\nimport Shared\nvalue = Shared.value");
     assert!(f.graph().err().unwrap().contains("MODULE NOT FOUND"));
 }
+
+#[test]
+fn applications_pinned_to_elm_0_19_1_or_0_19_2_are_accepted() {
+    // 0.19.2 is a patch release of the same language: projects created with it must build.
+    let with_version = |version: &str| {
+        let f = Fixture::new();
+        f.module("Main", "main = ()");
+        let path = f.root.join("elm.json");
+        let mut config: serde_json::Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+        config["elm-version"] = json!(version);
+        fs::write(&path, config.to_string()).unwrap();
+        f.graph()
+    };
+    for accepted in ["0.19.1", "0.19.2"] {
+        assert!(with_version(accepted).is_ok(), "{accepted} should be accepted");
+    }
+    for rejected in ["0.19.0", "0.19.3", "0.20.0"] {
+        let error = with_version(rejected).err().unwrap();
+        assert!(error.contains("needs a different version of Elm") && error.contains(rejected), "{rejected}: {error}");
+    }
+}

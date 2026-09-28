@@ -3,20 +3,22 @@
 <p align="center"><img src="https://github.com/user-attachments/assets/a3bfcfe1-bf13-4526-b2e0-1d9f987c0d5b" width="640" alt="Ferris (Rust) chases the Haskell logo away and the Elm tangram reassembles"></p>
 
 An independent, **unofficial** reimplementation of the [Elm](https://elm-lang.org)
-0.19.1 compiler, written in Rust. It parses, type-checks and generates
+0.19 compiler, written in Rust. It parses, type-checks and generates
 JavaScript by itself — it never calls the official Haskell compiler.
 
 It was built to compile a large production Elm codebase (ten applications,
 677 modules) faster and with far less memory. Largest application, development
 build (no `--optimize`), median of 3 runs on the same machine:
 
-|                                  | Official Elm 0.19.1 (8 threads) | This compiler |
-| -------------------------------- | ------------------------------- | ------------- |
-| Cold build                       | 170.9 s · 8.7 GiB               | **12.0 s · 256 MiB** |
-| Rebuild after editing one module | 4.0 s · 1.2 GiB                 | **1.75 s · 250 MiB** |
+|                                  | Elm 0.19.1        | Elm 0.19.2        | This compiler        |
+| -------------------------------- | ----------------- | ----------------- | -------------------- |
+| Cold build                       | 170.9 s · 8.7 GiB | 175.9 s · 8.5 GiB | **12.0 s · 256 MiB** |
+| Rebuild after editing one module | 4.0 s · 1.2 GiB   | 4.1 s · 1.2 GiB   | **1.75 s · 250 MiB** |
 
-_Linux x64, 16 threads, empty project caches, shared package cache, excluding
-bundling. Your numbers will differ; please share them in an issue._
+_Linux x64, 16 threads, official Elm with 8 threads (`GHCRTS=-N8`), empty
+project caches, shared package cache, excluding bundling. This is one large
+codebase: Elm 0.19.2 reports large gains on other projects, and your
+numbers will differ; please share them in an issue._
 
 > **Status: alpha.** It compiles real applications that pass their test suites
 > and aims at full Elm 0.19.1 compatibility, with a few deliberate differences
@@ -128,7 +130,9 @@ absolute path of the native executable.
 
 Target: **Elm 0.19.1** (elm/compiler tag `0.19.1`, commit `c9aefb6`), including
 error messages: diagnostics are compared with the official binary, text and
-JSON, by the differential checks in `scripts/`.
+JSON, by the differential checks in `scripts/`. Applications declaring
+`"elm-version": "0.19.2"` are accepted too: 0.19.2 is a patch release of the
+same language. Differential checks against the 0.19.2 binary are not done yet.
 
 Implemented: `init`, `install`, `make` (JavaScript/HTML output, several entry
 points, `--optimize`, `--debug`, `--docs`, `--report=json`), `repl`, `reactor`,

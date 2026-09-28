@@ -441,7 +441,7 @@ fn discover_entries_with_runtime(
                     .as_str()
                     .ok_or("missing elm-version")?,
             )?;
-            if elm != crate::package_solver::Version::ELM {
+            if !crate::package_solver::Version::APPLICATION.contains(&elm) {
                 return Err(crate::dependency_error::application_version(elm));
             }
             let roots = config["source-directories"]

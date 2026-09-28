@@ -4,7 +4,13 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org).
 
-## [Unreleased]
+## [0.3.0-alpha.7] - 2026-09-28
+
+### Fixed
+
+- Applications whose `elm.json` declares `"elm-version": "0.19.2"` are
+  accepted, like those declaring `0.19.1`. Other versions are still rejected
+  with the official error message.
 
 ### Changed
 

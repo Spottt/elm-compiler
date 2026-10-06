@@ -118,6 +118,10 @@ impl FieldName {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+    /// Whether both names point at the same allocation.
+    pub fn shares_text_with(&self, other: &Self) -> bool {
+        std::rc::Rc::ptr_eq(&self.0, &other.0)
+    }
 }
 impl Ord for FieldName {
     fn cmp(&self, other: &Self) -> Ordering {

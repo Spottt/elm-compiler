@@ -174,7 +174,7 @@ mod tests {
             let roots = prepared.import_into(&mut destination, |_| unreachable!()).unwrap();
             let view = destination.structure(roots[0]).unwrap();
             let Term::Record { fields, .. } = view.as_ref() else { panic!("expected record") };
-            assert!(Rc::ptr_eq(&name(1), fields.keys().next().unwrap()));
+            assert!(Rc::ptr_eq(&name(1), &fields.keys().next().unwrap().clone().into()));
         }
         let distinct = PreparedTypes::new(&json!({"version":1,"nodes":[["variable",1,"any"],["record",{"shared":0},null],["record",{"unique":0},null]],"roots":[1,2]})).unwrap();
         assert_eq!(distinct.estimated_bytes() - prepared.estimated_bytes(), "shared".len() + 32);

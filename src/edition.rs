@@ -23,6 +23,15 @@ pub(crate) fn length_first_names() -> bool {
     active() >= Version([0, 19, 3])
 }
 
+/// Orders `Home.name` strings like a map of homes holding sets of names.
+pub(crate) fn sort_qualified(names: &mut [String]) {
+    let split = |name: &'_ str| name.rsplit_once('.').map_or((String::new(), name.to_owned()), |(home, name)| (home.to_owned(), name.to_owned()));
+    names.sort_by(|left, right| {
+        let (left, right) = (split(left), split(right));
+        compare_names(&left.0, &right.0).then_with(|| compare_names(&left.1, &right.1))
+    });
+}
+
 /// Order of two names in the official compiler's maps for the selected release.
 pub(crate) fn compare_names(left: &str, right: &str) -> Ordering {
     if length_first_names() {

@@ -165,6 +165,8 @@ fn unique_bindings(
                 .collect::<Vec<_>>();
             choices.sort();
             choices.dedup();
+            // Homes come out of a map keyed by module name in the official compiler.
+            crate::edition::sort_qualified(&mut choices);
             let homes = choices
                 .iter()
                 .filter_map(|choice| choice.rsplit_once('.').map(|(home, _)| home.to_owned()))
@@ -633,7 +635,14 @@ impl<'a, 's> Resolver<'a, 's> {
         if space == Space::Value {
             local_names.extend(self.scope.keys().map(|name| (*name).to_owned()));
         }
-        let candidates = self.env.qualified_names(space).into_iter().chain(local_names).collect();
+        // The official list is every qualified name, by prefix then name, followed by the local names.
+        let mut qualified: Vec<String> = self.env.qualified_names(space).into_iter().collect();
+        let mut local_names: Vec<String> = local_names.into_iter().collect();
+        if crate::edition::length_first_names() {
+            crate::edition::sort_qualified(&mut qualified);
+            local_names.sort_by(|left, right| crate::edition::compare_names(left, right));
+        }
+        let candidates = qualified.into_iter().chain(local_names).collect();
         let known_prefix = name
             .rsplit_once('.')
             .is_some_and(|(prefix, _)| self.env.imported_prefixes.contains(prefix));

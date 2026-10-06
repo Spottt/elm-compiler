@@ -415,6 +415,7 @@ fn operator_report(
                 .iter()
                 .map(Value::as_str)
                 .collect::<Option<_>>()?;
+            candidates.sort_by(|left, right| crate::edition::compare_names(left, right));
             candidates.sort_by_key(|candidate| distance(op, candidate));
             candidates.truncate(2);
             let formatted: Vec<_> = candidates.iter().map(|op| format!("({op})")).collect();

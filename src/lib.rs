@@ -63,6 +63,7 @@ pub mod html;
 pub mod source_error;
 
 mod unicode;
+mod unicode_15_1;
 
 pub mod shader;
 

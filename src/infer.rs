@@ -544,7 +544,7 @@ impl<'a, 's> Infer<'a, 's> {
                         let Term::Record { fields, .. } = &*term else {
                             unreachable!()
                         };
-                        fields[name.as_str()]
+                        fields[&crate::edition::FieldName::from(name.as_str())]
                     } else {
                         ty
                     };
@@ -624,7 +624,7 @@ impl<'a, 's> Infer<'a, 's> {
                 {
                     let original = self.reference(id, level)?;
                     let mut ordered: Vec<_> = fields.iter().collect();
-                    ordered.sort_by_key(|(name, _)| *name);
+                    ordered.sort_by(|(left, _), (right, _)| crate::edition::compare_names(left, right));
                     let expected_fields: BTreeMap<_, _> = ordered
                         .iter()
                         .map(|(name, _)| ((*name).into(), self.fresh(level)))
@@ -643,7 +643,7 @@ impl<'a, 's> Infer<'a, 's> {
                         for (name, child) in &ordered {
                             let mut context = crate::annotation_diagnostic::Context::body("");
                             context.update_value = Some((region, name.to_string()));
-                            let expected = expected_fields[*name];
+                            let expected = expected_fields[&crate::edition::FieldName::from(*name)];
                             self.annotation_contexts.insert(*child, (context, expected));
                         }
                         self.call_results.insert(id, record);

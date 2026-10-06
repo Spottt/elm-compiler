@@ -25,7 +25,7 @@ pub fn missing(
     let (title, preface, possibilities, advice, hint) = match context {
         "argument" => (
             "UNSAFE PATTERN",
-            if crate::edition::fixed_possibilities_typo() {
+            if crate::edition::corrected_wording() {
                 "This pattern does not cover all possibilities:"
             } else {
                 "This pattern does not cover all possiblities:"
@@ -38,7 +38,11 @@ pub fn missing(
             "UNSAFE PATTERN",
             "This pattern does not cover all possible values:",
             "Other possibilities include:",
-            "I would have to crash if I saw one of those! You can use `let` to deconstruct values only if there is ONE possiblity. Switch to a `case` expression to account for all possibilities.",
+            if crate::edition::corrected_wording() {
+                "I would have to crash if I saw one of those! You can use `let` to deconstruct values only if there is ONE possibility. Switch to a `case` expression to account for all possibilities."
+            } else {
+                "I would have to crash if I saw one of those! You can use `let` to deconstruct values only if there is ONE possiblity. Switch to a `case` expression to account for all possibilities."
+            },
             Some(
                 "Are you calling a function that definitely returns values with a very specific shape? Try making the return type of that function more specific!",
             ),

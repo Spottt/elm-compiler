@@ -22,7 +22,7 @@ impl PreparedDescriptor {
             && let Term::Record { fields, extension } = Rc::make_mut(term)
         {
             return Self::Record {
-                fields: std::mem::take(fields).into_iter().collect(),
+                fields: std::mem::take(fields).into_iter().map(|(name, ty)| (name.into(), ty)).collect(),
                 extension: *extension,
             };
         }
@@ -65,7 +65,7 @@ impl PreparedTypes {
             let descriptor = match descriptor {
                 PreparedDescriptor::Record { fields, extension } => {
                     Descriptor::Structure(Rc::new(Term::Record {
-                        fields: fields.iter().map(|(name, ty)| (name.clone(), remap(*ty))).collect(),
+                        fields: fields.iter().map(|(name, ty)| (name.clone().into(), remap(*ty))).collect(),
                         extension: extension.map(remap),
                     }))
                 }
@@ -122,7 +122,7 @@ impl PreparedTypes {
                 bytes += std::mem::size_of::<Term>() + 32;
                 match &**term {
                     Term::Alias(_, args, _) | Term::Named(_, args) | Term::Tuple(args) => bytes += args.capacity() * std::mem::size_of::<Ty>(),
-                    Term::Record { fields, .. } => bytes += fields.keys().map(|name| name_bytes(name) + 112).sum::<usize>(),
+                    Term::Record { fields, .. } => bytes += fields.keys().map(|name| name_bytes(&name.clone().into()) + 112).sum::<usize>(),
                     _ => {}
                 }
             }

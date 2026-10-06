@@ -69,9 +69,9 @@ impl Fields {
             }
         }
         let mut fields: Vec<_> = counts.into_iter().collect();
-        // More frequent fields get shorter names. Lexical tie-breaking keeps
-        // output deterministic across traversal order and hash randomization.
-        fields.sort_unstable_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        // More frequent fields get shorter names. Ties follow the official name
+        // order, which also keeps output deterministic across traversal order.
+        fields.sort_unstable_by(|a, b| b.1.cmp(&a.1).then_with(|| crate::edition::compare_names(&a.0, &b.0)));
         Ok(Self(Some(
             fields
                 .into_iter()

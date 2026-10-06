@@ -71,7 +71,7 @@ pub(crate) fn capture(
         } => updates
             .iter()
             .map(|(name, _)| *name)
-            .filter(|name| !fields.contains_key(*name))
+            .filter(|name| !fields.contains_key(&crate::edition::FieldName::from(*name)))
             .min()?,
         _ => return None,
     };

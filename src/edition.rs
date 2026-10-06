@@ -27,9 +27,24 @@ pub fn localize_links(text: &str) -> std::borrow::Cow<'_, str> {
     text.replace(REFERENCE, &format!("https://elm-lang.org/{major}.{minor}.{patch}/")).into()
 }
 
-/// The 0.19.1 exhaustiveness report misspells "possibilities"; later releases do not.
-pub(crate) fn fixed_possibilities_typo() -> bool {
+/// Elm 0.19.2 corrected several misspelled or ungrammatical 0.19.1 messages.
+pub(crate) fn corrected_wording() -> bool {
     active() >= Version([0, 19, 2])
+}
+
+/// Elm 0.19.2 and later were built with a GHC whose character predicates follow Unicode 15.1.
+pub(crate) fn unicode_15_1() -> bool {
+    active() >= Version([0, 19, 2])
+}
+
+/// Since 0.19.2 a name clash is reported on the other of its two occurrences.
+pub(crate) fn swapped_duplicate_regions() -> bool {
+    active() >= Version([0, 19, 2])
+}
+
+/// Elm 0.19.3 corrected the `Debug` remnant explanation ("JavaScript is smaller").
+pub(crate) fn corrected_debug_remnant_wording() -> bool {
+    active() >= Version([0, 19, 3])
 }
 
 /// Elm 0.19.3 compares names by byte length before content (`Bytes.compareFast`),
@@ -60,5 +75,64 @@ pub fn compare_names(left: &str, right: &str) -> Ordering {
         left.len().cmp(&right.len()).then_with(|| left.as_bytes().cmp(right.as_bytes()))
     } else {
         left.cmp(right)
+    }
+}
+
+/// A record field name ordered like the official compiler's maps for the selected release.
+///
+/// Maps keyed by it must be built and read within one compilation, since the
+/// order follows the release selected for the current thread.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FieldName(std::rc::Rc<str>);
+
+impl FieldName {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+impl Ord for FieldName {
+    fn cmp(&self, other: &Self) -> Ordering {
+        compare_names(&self.0, &other.0)
+    }
+}
+impl PartialOrd for FieldName {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl std::ops::Deref for FieldName {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+impl AsRef<str> for FieldName {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+impl std::fmt::Display for FieldName {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+impl From<&str> for FieldName {
+    fn from(name: &str) -> Self {
+        Self(name.into())
+    }
+}
+impl From<String> for FieldName {
+    fn from(name: String) -> Self {
+        Self(name.into())
+    }
+}
+impl From<std::rc::Rc<str>> for FieldName {
+    fn from(name: std::rc::Rc<str>) -> Self {
+        Self(name)
+    }
+}
+impl From<FieldName> for std::rc::Rc<str> {
+    fn from(name: FieldName) -> Self {
+        name.0
     }
 }

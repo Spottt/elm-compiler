@@ -50,8 +50,8 @@ pub enum Term {
     Tuple(Vec<Ty>),
     Record {
         // Copies relocate type handles but share immutable field text with
-        // prepared artifacts and checkpoints; ordering remains lexical.
-        fields: BTreeMap<Rc<str>, Ty>,
+        // prepared artifacts and checkpoints; ordering follows the selected release.
+        fields: BTreeMap<crate::edition::FieldName, Ty>,
         extension: Option<Ty>,
     },
 }
@@ -81,7 +81,7 @@ pub struct Scheme {
     pub quantified: BTreeSet<Ty>,
 }
 struct RecordRow<'a> {
-    fields: Cow<'a, BTreeMap<Rc<str>, Ty>>,
+    fields: Cow<'a, BTreeMap<crate::edition::FieldName, Ty>>,
     extension: Option<Ty>,
 }
 /// Reused membership storage for non-nested type-graph traversals. A fresh
@@ -707,7 +707,7 @@ impl Engine {
     // flat case so comparing a large record does not clone its field names.
     fn gather_fields<'a>(
         &mut self,
-        fields: &'a BTreeMap<Rc<str>, Ty>,
+        fields: &'a BTreeMap<crate::edition::FieldName, Ty>,
         mut extension: Option<Ty>,
     ) -> Result<RecordRow<'a>, String> {
         let mut fields = Cow::Borrowed(fields);
@@ -749,9 +749,9 @@ impl Engine {
     }
     fn records(
         &mut self,
-        a: &BTreeMap<Rc<str>, Ty>,
+        a: &BTreeMap<crate::edition::FieldName, Ty>,
         ea: Option<Ty>,
-        b: &BTreeMap<Rc<str>, Ty>,
+        b: &BTreeMap<crate::edition::FieldName, Ty>,
         eb: Option<Ty>,
         pending: &mut Vec<(Ty, Ty)>,
     ) -> Result<(), String> {

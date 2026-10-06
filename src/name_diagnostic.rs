@@ -457,6 +457,12 @@ fn shadowing_report(
     let line = data["first"][0].as_u64()? as usize;
     let column = data["first"][1].as_u64()? as usize;
     let last = data["first"][2].as_u64()? as usize;
+    // Since 0.19.2 the official duplicate detection hands the two occurrences over in the other order.
+    let (line, column, last, start, end) = if crate::edition::swapped_duplicate_regions() && start.0 == end.0 {
+        (start.0, start.1, end.1, (line, column), (line, last))
+    } else {
+        (line, column, last, start, end)
+    };
     let mut message = if line == start.0 && start.0 == end.0 {
         let source_line = source.split('\n').nth(line - 1)?;
         let mut m = vec![];
@@ -537,7 +543,7 @@ fn cycle_report(
     text(&mut message, "\n".into());
     if others.is_empty() {
         for (index,(question,details)) in [
-            ("Are you are trying to mutate a variable?",format!("Elm does not have mutation, so when I see {name} defined in terms of {name}, I treat it as a recursive definition. Try giving the new value a new name!")),
+            (if crate::edition::corrected_wording() { "Are you trying to mutate a variable?" } else { "Are you are trying to mutate a variable?" },format!("Elm does not have mutation, so when I see {name} defined in terms of {name}, I treat it as a recursive definition. Try giving the new value a new name!")),
             ("Maybe you DO want a recursive value?",format!("To define {name} we need to know what {name} is, so let’s expand it. Wait, but now we need to know what {name} is, so let’s expand it... This will keep going infinitely!")),
         ].into_iter().enumerate() {
             if index>0 {text(&mut message,"\n\n".into());}
@@ -600,6 +606,12 @@ fn duplicate_pattern_report(
     let line = data["first"][0].as_u64()? as usize;
     let column = data["first"][1].as_u64()? as usize;
     let last = data["first"][2].as_u64()? as usize;
+    // Since 0.19.2 the official duplicate detection hands the two occurrences over in the other order.
+    let (line, column, last, start, end) = if crate::edition::swapped_duplicate_regions() && start.0 == end.0 {
+        (start.0, start.1, end.1, (line, column), (line, last))
+    } else {
+        (line, column, last, start, end)
+    };
     let mut message = if line == start.0 && start.0 == end.0 {
         let source_line = source.split('\n').nth(line - 1)?;
         let mut m = vec![];

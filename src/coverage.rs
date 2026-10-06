@@ -668,7 +668,7 @@ fn aggregate_report(
                     }
                     Expr::Record { fields, .. } => {
                         let mut fields: Vec<_> = fields.iter().collect();
-                        fields.sort_by_key(|(name, _)| *name);
+                        fields.sort_by(|(left, _), (right, _)| crate::edition::compare_names(left, right));
                         pending.extend(
                             fields
                                 .into_iter()

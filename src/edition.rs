@@ -37,6 +37,11 @@ pub(crate) fn unicode_15_1() -> bool {
     active() >= Version([0, 19, 2])
 }
 
+/// Since 0.19.2 character literals are decoded by the parser instead of kept as written.
+pub(crate) fn decoded_char_literals() -> bool {
+    active() >= Version([0, 19, 2])
+}
+
 /// Since 0.19.2 a name clash is reported on the other of its two occurrences.
 pub(crate) fn swapped_duplicate_regions() -> bool {
     active() >= Version([0, 19, 2])

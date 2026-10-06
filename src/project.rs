@@ -444,6 +444,7 @@ fn discover_entries_with_runtime(
             if !crate::package_solver::Version::APPLICATION.contains(&elm) {
                 return Err(crate::dependency_error::application_version(elm));
             }
+            crate::edition::select(elm);
             let roots = config["source-directories"]
                 .as_array()
                 .ok_or("missing source-directories")?
@@ -497,6 +498,7 @@ fn discover_entries_with_runtime(
             )
         }
         Some("package") => {
+            crate::edition::select(crate::package_solver::Version::ELM);
             let owner = config["name"]
                 .as_str()
                 .filter(|name| crate::package_solver::valid_name(name))

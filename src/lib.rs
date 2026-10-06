@@ -4,6 +4,7 @@ pub mod dependency_build;
 pub mod package_progress;
 pub mod make_output;
 pub mod ast;
+mod edition;
 pub mod cache;
 pub mod fields;
 pub mod fixity;

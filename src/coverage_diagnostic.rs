@@ -25,7 +25,11 @@ pub fn missing(
     let (title, preface, possibilities, advice, hint) = match context {
         "argument" => (
             "UNSAFE PATTERN",
-            "This pattern does not cover all possiblities:",
+            if crate::edition::fixed_possibilities_typo() {
+                "This pattern does not cover all possibilities:"
+            } else {
+                "This pattern does not cover all possiblities:"
+            },
             "Other possibilities include:",
             "I would have to crash if I saw one of those! So rather than pattern matching in function arguments, put a `case` in the function body to account for all possibilities.",
             None,

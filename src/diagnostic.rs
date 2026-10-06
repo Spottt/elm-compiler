@@ -94,8 +94,17 @@ fn internal_error_document(detail: &str, ansi: bool) -> String {
 }
 
 pub fn report(message: &str) -> Value {
+    let report = report_for_reference(message);
+    let text = report.to_string();
+    match planexpo_elm::edition::localize_links(&text) {
+        std::borrow::Cow::Borrowed(_) => report,
+        std::borrow::Cow::Owned(localized) => serde_json::from_str(&localized).unwrap_or(report),
+    }
+}
+
+fn report_for_reference(message: &str) -> Value {
     if let Some((entry, message)) = repl_message(message) {
-        return repl_paths(report(&message), Some(&entry));
+        return repl_paths(report_for_reference(&message), Some(&entry));
     }
     if let Some((name, message)) = planexpo_elm::source_error::module_message(message) {
         let mut result = report(&message);
@@ -128,7 +137,7 @@ pub fn report(message: &str) -> Value {
                 }
             }
         }
-        errors.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+        planexpo_elm::edition::sort_module_reports(&mut errors);
         return json!({"type":"compile-errors", "errors":errors});
     }
     if let Some(report) = planexpo_elm::docs_diagnostic::report_encoded(message) {
@@ -344,10 +353,12 @@ fn title(message: &str) -> &str {
 }
 
 pub fn terminal(message: &str) -> String {
-    if let Some((entry, message)) = repl_message(message) {
-        return terminal_context(&message, Some(&entry));
-    }
-    terminal_context(message, None)
+    let text = if let Some((entry, message)) = repl_message(message) {
+        terminal_context(&message, Some(&entry))
+    } else {
+        terminal_context(message, None)
+    };
+    planexpo_elm::edition::localize_links(&text).into_owned()
 }
 fn terminal_context(message: &str, entry: Option<&Path>) -> String {
     if let Some((_, message)) = planexpo_elm::source_error::module_message(message) {

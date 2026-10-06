@@ -17,6 +17,21 @@ fn active() -> Version {
     ACTIVE.with(Cell::get)
 }
 
+/// Official messages link to the guide of the release that printed them.
+pub fn localize_links(text: &str) -> std::borrow::Cow<'_, str> {
+    const REFERENCE: &str = "https://elm-lang.org/0.19.1/";
+    let Version([major, minor, patch]) = active();
+    if active() == Version::ELM || !text.contains(REFERENCE) {
+        return text.into();
+    }
+    text.replace(REFERENCE, &format!("https://elm-lang.org/{major}.{minor}.{patch}/")).into()
+}
+
+/// The 0.19.1 exhaustiveness report misspells "possibilities"; later releases do not.
+pub(crate) fn fixed_possibilities_typo() -> bool {
+    active() >= Version([0, 19, 2])
+}
+
 /// Elm 0.19.3 compares names by byte length before content (`Bytes.compareFast`),
 /// which reorders everything the official compiler reads out of a name-keyed map.
 pub(crate) fn length_first_names() -> bool {
@@ -32,8 +47,15 @@ pub(crate) fn sort_qualified(names: &mut [String]) {
     });
 }
 
+/// Orders per-module reports like the official map of module results.
+pub fn sort_module_reports(errors: &mut [serde_json::Value]) {
+    errors.sort_by(|left, right| {
+        compare_names(left["name"].as_str().unwrap_or(""), right["name"].as_str().unwrap_or(""))
+    });
+}
+
 /// Order of two names in the official compiler's maps for the selected release.
-pub(crate) fn compare_names(left: &str, right: &str) -> Ordering {
+pub fn compare_names(left: &str, right: &str) -> Ordering {
     if length_first_names() {
         left.len().cmp(&right.len()).then_with(|| left.as_bytes().cmp(right.as_bytes()))
     } else {

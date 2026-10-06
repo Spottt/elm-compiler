@@ -153,7 +153,7 @@ impl Loader {
             }
             errors.push(failure.report(&known)?);
         }
-        errors.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+        crate::edition::sort_module_reports(&mut errors);
         Ok(errors)
     }
     // A loader is confined to one discovery pass. Repeated imports share their

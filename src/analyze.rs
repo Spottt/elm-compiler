@@ -1124,7 +1124,7 @@ fn project_pass_with_display(
         }
     }
     if !documentation_errors.is_empty() {
-        documentation_errors.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+        crate::edition::sort_module_reports(&mut documentation_errors);
         return Err(crate::docs_diagnostic::encode(&serde_json::json!({
             "type": "compile-errors", "errors": documentation_errors
         })));

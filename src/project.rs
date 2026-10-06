@@ -96,6 +96,32 @@ struct Loader {
     done: BTreeSet<String>,
     modules: Vec<Module>,
 }
+/// Reads an Elm module. Since 0.19.2 a file that is not UTF-8 is reported at its first bad
+/// byte, unless an ordinary syntax error comes first as it would for the official lexer.
+fn read_module(path: &Path) -> Result<Source, String> {
+    match snapshot::read_to_string(path) {
+        Ok(source) => Ok(source),
+        Err(error) if error.kind() == std::io::ErrorKind::InvalidData && crate::edition::reports_encoding() => {
+            let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+            match crate::edition::decode_source(bytes) {
+                Ok(source) => Ok(source.into()),
+                Err((lossy, line, column)) => {
+                    let earlier_syntax_error = crate::parser::parse(&lossy).err().is_some_and(|error| {
+                        let mut parts = error.splitn(3, ':');
+                        let position = (parts.next().and_then(|s| s.parse().ok()), parts.next().and_then(|s| s.parse().ok()));
+                        matches!(position, (Some(l), Some(c)) if (l, c) <= (line, column))
+                    });
+                    if earlier_syntax_error {
+                        Ok(lossy.into())
+                    } else {
+                        Err(format!("{}:{line}:{column}:{line}:{column}: {}", path.display(), crate::edition::NOT_UTF8))
+                    }
+                }
+            }
+        }
+        Err(error) => Err(format!("{}: {error}", path.display())),
+    }
+}
 fn json(path: &Path, inputs: &mut Vec<(PathBuf, String)>) -> Result<Value, String> {
     let s = snapshot::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let value = crate::outline::decode(&s).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -285,7 +311,7 @@ impl Loader {
             return Err(format!("cyclic import at {id}"));
         }
         let local_started = self.profile.as_ref().map(|_| std::time::Instant::now());
-        let source = discovery_time!(self, read_ms, snapshot::read_to_string(&path)).map_err(|e| format!("{}: {e}", path.display()))?;
+        let source = discovery_time!(self, read_ms, read_module(&path))?;
         let mut dependencies = BTreeMap::new();
         let token_count;
         if kernel {
@@ -580,7 +606,7 @@ fn discover_entries_with_runtime(
     let mut entry_ids = Vec::new();
     for entry in entries {
         let path = root.join(entry);
-        let source = snapshot::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let source = read_module(&path)?;
         let name = match discovery_header_at(Some(&path), &source, recover_lexical) {
             Ok((header, _, _)) => {
                 if recover_lexical && !header.explicit {

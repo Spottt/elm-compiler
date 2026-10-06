@@ -11,6 +11,19 @@ pub fn report(
     column: usize,
     kind: &str,
 ) -> Option<Value> {
+    if kind == crate::edition::NOT_UTF8 {
+        let mut message = snippet_positions(
+            source,
+            (line, column),
+            (line, column),
+            &reflow("Elm files use UTF-8 character encoding, but I ran into something outside of that format:"),
+        )?;
+        text(&mut message, "\nIs there a way to convert this to a valid UTF-8 character?".into());
+        return Some(json!({"type":"compile-errors","errors":[{"path":path,"name":name,"problems":[{
+            "title":"UNEXPECTED ENCODING",
+            "region":{"start":{"line":line,"column":column},"end":{"line":line,"column":column}},"message":message
+        }]}]}));
+    }
     let comment = match kind {
         "tabs are not allowed in Elm layout" | "tabs are not allowed in block comments" => false,
         "unterminated block comment" => true,

@@ -37,6 +37,30 @@ pub(crate) fn unicode_15_1() -> bool {
     active() >= Version([0, 19, 2])
 }
 
+/// Explanation carried by the located error for a source file that is not valid UTF-8.
+pub const NOT_UTF8: &str = "source is not UTF-8";
+
+/// Since 0.19.2 a file that is not valid UTF-8 gets an encoding report at the first bad byte,
+/// unless an ordinary syntax error comes first. `Ok` carries the text to keep compiling with.
+pub(crate) fn decode_source(bytes: Vec<u8>) -> Result<String, (String, usize, usize)> {
+    let error = match String::from_utf8(bytes) {
+        Ok(source) => return Ok(source),
+        Err(error) => error,
+    };
+    let valid = error.utf8_error().valid_up_to();
+    let bytes = error.into_bytes();
+    let lossy = String::from_utf8_lossy(&bytes).into_owned();
+    let prefix = &lossy[..valid];
+    let line = prefix.bytes().filter(|byte| *byte == b'\n').count() + 1;
+    let column = prefix.rsplit('\n').next().unwrap_or("").chars().count() + 1;
+    Err((lossy, line, column))
+}
+
+/// Whether sources that are not valid UTF-8 get the dedicated report of 0.19.2 and later.
+pub(crate) fn reports_encoding() -> bool {
+    active() >= Version([0, 19, 2])
+}
+
 /// Since 0.19.2 character literals are decoded by the parser instead of kept as written.
 pub(crate) fn decoded_char_literals() -> bool {
     active() >= Version([0, 19, 2])

@@ -151,7 +151,8 @@ fn report_for_reference(message: &str) -> Value {
     }
     for (offset, _) in message.match_indices(".elm:") {
         let path = &message[..offset + 4];
-        let Ok(source) = fs::read_to_string(path) else {
+        // Sources that are not UTF-8 are reported against their lossy text.
+        let Ok(source) = fs::read(path).map(|bytes| String::from_utf8_lossy(&bytes).into_owned()) else {
             continue;
         };
         let detail = message[offset + 5..].trim_start();

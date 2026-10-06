@@ -457,12 +457,6 @@ fn shadowing_report(
     let line = data["first"][0].as_u64()? as usize;
     let column = data["first"][1].as_u64()? as usize;
     let last = data["first"][2].as_u64()? as usize;
-    // Since 0.19.2 the official duplicate detection hands the two occurrences over in the other order.
-    let (line, column, last, start, end) = if crate::edition::swapped_duplicate_regions() && start.0 == end.0 {
-        (start.0, start.1, end.1, (line, column), (line, last))
-    } else {
-        (line, column, last, start, end)
-    };
     let mut message = if line == start.0 && start.0 == end.0 {
         let source_line = source.split('\n').nth(line - 1)?;
         let mut m = vec![];

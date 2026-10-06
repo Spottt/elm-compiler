@@ -330,12 +330,17 @@ pub struct Resolved {
 }
 fn declare(ast: &Syntax<'_>, module: &str, symbols: &mut Symbols) -> Result<Interface, String> {
     let mut local = Interface::default();
+    // A clash is reported on the later declaration by 0.19.1 and on the earlier one since 0.19.2.
+    let earlier_clash = crate::edition::swapped_duplicate_regions();
+    let mut first_values = BTreeMap::<&str, &str>::new();
+    let mut first_types = BTreeMap::<&str, &str>::new();
     for d in &ast.declarations {
         match d {
             Declaration::Value { name, .. } | Declaration::Port { name, .. } => {
                 let id = symbols.intern(module, name, Space::Value, SymbolKind::Value);
+                let reported = if earlier_clash { *first_values.entry(name).or_insert(name) } else { name };
                 insert(&mut local.values, name, id)
-                    .map_err(|e| crate::source_error::locate_slice(ast.source, name, e))?;
+                    .map_err(|e| crate::source_error::locate_slice(ast.source, reported, e))?;
             }
             Declaration::Alias {
                 name, parameters, ..
@@ -343,15 +348,16 @@ fn declare(ast: &Syntax<'_>, module: &str, symbols: &mut Symbols) -> Result<Inte
             | Declaration::Union {
                 name, parameters, ..
             } => {
-                let mut seen = BTreeSet::new();
+                let mut seen = BTreeMap::<&str, &str>::new();
                 for parameter in parameters {
-                    if !seen.insert(*parameter) {
+                    if let Some(first) = seen.get(*parameter) {
                         return Err(crate::source_error::locate_slice(
                             ast.source,
-                            parameter,
+                            if earlier_clash { first } else { parameter },
                             format!("duplicate type parameter {parameter} in {name}"),
                         ));
                     }
+                    seen.insert(parameter, parameter);
                 }
                 let id = symbols.intern(
                     module,
@@ -362,8 +368,9 @@ fn declare(ast: &Syntax<'_>, module: &str, symbols: &mut Symbols) -> Result<Inte
                         alias: matches!(d, Declaration::Alias { .. }),
                     },
                 );
+                let reported = if earlier_clash { *first_types.entry(name).or_insert(name) } else { name };
                 insert(&mut local.types, name, id)
-                    .map_err(|e| crate::source_error::locate_slice(ast.source, name, e))?;
+                    .map_err(|e| crate::source_error::locate_slice(ast.source, reported, e))?;
             }
             _ => {}
         }

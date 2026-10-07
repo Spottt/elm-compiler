@@ -1,7 +1,7 @@
 # @spottt/elm-compiler
 
-A fast, **unofficial** Elm 0.19 compiler written in Rust (projects on 0.19.1
-or 0.19.2), with prebuilt
+A fast, **unofficial** Elm 0.19 compiler written in Rust (projects on 0.19.1,
+0.19.2 or 0.19.3), with prebuilt
 binaries for Linux (glibc) and macOS (x64, ARM64) and Windows (x64).
 
 ```sh
@@ -13,9 +13,9 @@ npx elm make src/Main.elm --output=main.js
 It provides the `elm` command (drop-in replacement; `planexpo-elm` is an
 alias). Install it instead of the official `elm` package, not alongside it.
 
-On a 677-module application, a cold development build takes 12 s and 256 MiB
-instead of 176 s and 8.5 GiB with official Elm 0.19.2 (171 s and 8.7 GiB with
-0.19.1; single machine, median of 3).
+On a 677-module application, a cold development build takes 12 s and 251 MiB
+instead of 167 s and 8.5 GiB with official Elm 0.19.3 (177 s with 0.19.2 and
+178 s with 0.19.1; single machine, median of 3).
 
 - The command line mirrors `elm`: `init`, `install`, `make` (`--output`,
   `--optimize`, `--debug`, `--report=json`, `--docs`), `repl`, `reactor`,
@@ -29,7 +29,7 @@ instead of 176 s and 8.5 GiB with official Elm 0.19.2 (171 s and 8.7 GiB with
   `node_modules/.bin`. `require('@spottt/elm-compiler').resolveBinary()`
   returns the native executable path.
 
-Status: alpha, aiming at full compatibility with Elm 0.19.1 and 0.19.2, with a few deliberate
+Status: alpha, aiming at full compatibility with Elm 0.19.1, 0.19.2 and 0.19.3, with a few deliberate
 fixes of known Elm defects. Documentation, compatibility notes and bug reports:
 https://github.com/Spottt/elm-compiler
 

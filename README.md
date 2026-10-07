@@ -141,14 +141,33 @@ absolute path of the native executable.
 
 ## Compatibility
 
-Target: **Elm 0.19**, the language shared by 0.19.1 and 0.19.2. Projects
-declaring `"elm-version": "0.19.1"` or `"0.19.2"` are both accepted.
+Target: **Elm 0.19**, the language shared by 0.19.1, 0.19.2 and 0.19.3. Projects
+declaring `"elm-version": "0.19.1"`, `"0.19.2"` or `"0.19.3"` are all accepted.
 
 The reference implementation for the differential checks in `scripts/` is Elm
 0.19.1 (elm/compiler tag `0.19.1`, commit `c9aefb6`): diagnostics are compared
 with the official binary, text and JSON. The same checks have not been run
 systematically against the 0.19.2 binary yet; the defects listed below were
-re-checked against it one by one.
+re-checked against 0.19.2 one by one.
+
+The official binaries differ in a few observable details although the language
+is the same. An application's `elm-version` selects which binary this compiler
+follows (packages and the REPL outside a project follow 0.19.1):
+
+- Since 0.19.2: identifiers use the Unicode 15.1 letter tables; character
+  literals are decoded, so `Char.toCode '\u{D800}'` is 65533 instead of `NaN`;
+  hexadecimal literals of any length are accepted and wrap around 64 bits;
+  source files that are not UTF-8 get an `UNEXPECTED ENCODING` report; a name
+  clash is reported on the other occurrence; a few misspelled messages are
+  corrected.
+- Since 0.19.3: names are ordered by length before content. This changes the
+  order of record fields in the generated JavaScript (visible through
+  `Debug.toString` and object keys) and the order of names, modules and fields
+  in error messages. `--docs` creates a missing output directory.
+
+The 0.19.3 behaviour was checked by replaying the differential checks against
+the 0.19.3 binary; the checks of package commands (`install`, `diff`, `bump`,
+`publish`) and of the REPL have not been ported to it yet.
 
 Implemented: `init`, `install`, `make` (JavaScript/HTML output, several entry
 points, `--optimize`, `--debug`, `--docs`, `--report=json`), `repl`, `reactor`,
@@ -170,6 +189,19 @@ compiler does not reproduce (status in 0.19.2 re-checked on 2026-09-28):
   emit unescaped control characters (0.19.1 and 0.19.2) or crash on some
   first-line errors (0.19.1 only), and can time out on some malformed one-line
   manifests (0.19.1 and 0.19.2).
+
+Regressions of the official 0.19.2 and 0.19.3 binaries that this compiler does
+not reproduce:
+
+- 0.19.3 crashes with a segmentation fault on a cyclic value such as
+  `f = f 42`; this compiler reports the cycle.
+- Reports showing two places on one line (name clashes, shadowing) print the
+  number of the previous line (0.19.2 and 0.19.3).
+- Syntax reports that depend on the next token, such as `RESERVED WORD`,
+  `EXTRA COMMA` or `UNEXPECTED SYMBOL`, fall back to a generic report (0.19.2
+  and 0.19.3).
+- 0.19.3 prints a GHC call stack after some errors (`init`, `bump`, writing the
+  output file).
 
 Compatibility is checked by differential tests against the official binary, by
 the historical Elm test programs in `tests/upstream/` (33/33 identical decisions

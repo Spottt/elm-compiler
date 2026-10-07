@@ -12,6 +12,21 @@ All notable changes are documented here. The format follows
   stdin/stdout, for bundler plugins and dev servers. Documented in
   `docs/worker.md`. The former `--internal-make-worker` name still works.
 
+### Changed
+
+- Applications whose `elm.json` declares `"elm-version": "0.19.2"` or
+  `"0.19.3"` now follow the observable behaviour of that official binary
+  where it differs from 0.19.1: Unicode 15.1 identifiers, decoded character
+  literals, long hexadecimal literals, the `UNEXPECTED ENCODING` report and
+  corrected messages since 0.19.2; the name order of 0.19.3 in generated
+  record fields and in error messages. Applications declaring `0.19.1` are
+  unchanged. See the Compatibility section of the README.
+
+### Fixed
+
+- Applications whose `elm.json` declares `"elm-version": "0.19.3"` are
+  accepted, like those declaring `0.19.1` or `0.19.2`.
+
 ## [0.3.0-alpha.7] - 2026-09-28
 
 ### Fixed

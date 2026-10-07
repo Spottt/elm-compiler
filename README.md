@@ -8,20 +8,20 @@ It was built to compile a large production Elm codebase (ten applications,
 677 modules) faster and with far less memory. Largest application, development
 build (no `--optimize`), median of 3 runs on the same machine:
 
-|                                  | Elm 0.19.1        | Elm 0.19.2        | This compiler        |
-| -------------------------------- | ----------------- | ----------------- | -------------------- |
-| Cold build                       | 170.9 s · 8.7 GiB | 175.9 s · 8.5 GiB | **12.0 s · 256 MiB** |
-| Rebuild after editing one module | 4.0 s · 1.2 GiB   | 4.1 s · 1.2 GiB   | **1.75 s · 250 MiB** |
+|                                  | Elm 0.19.1        | Elm 0.19.2        | Elm 0.19.3        | This compiler        |
+| -------------------------------- | ----------------- | ----------------- | ----------------- | -------------------- |
+| Cold build                       | 177.7 s · 8.6 GiB | 176.8 s · 8.5 GiB | 166.9 s · 8.5 GiB | **12.0 s · 251 MiB** |
+| Rebuild after editing one module | 4.03 s · 1.2 GiB  | 4.14 s · 1.1 GiB  | 4.35 s · 1.1 GiB  | **1.77 s · 250 MiB** |
 
 _Linux x64, 16 threads, official Elm with 8 threads (`GHCRTS=-N8`), empty
 project caches, shared package cache, excluding bundling. This is one large
 codebase: Elm 0.19.2 reports large gains on other projects, and your
 numbers will differ; please share them in an issue._
 
-<p align="center"><img src="docs/benchmark.png" width="720" alt="Cold build time, peak memory and rebuild time for Elm 0.19.1, Elm 0.19.2 and this compiler on a 677-module application"></p>
+<p align="center"><img src="docs/benchmark.png" width="720" alt="Cold build time, peak memory and rebuild time for Elm 0.19.1, 0.19.2, 0.19.3 and this compiler on a 677-module application"></p>
 
 > **Status: alpha.** It compiles real applications that pass their test suites
-> and aims at full compatibility with Elm 0.19.1 and 0.19.2, with a few deliberate differences
+> and aims at full compatibility with Elm 0.19.1, 0.19.2 and 0.19.3, with a few deliberate differences
 > listed below. Read [Compatibility](#compatibility) before relying on it.
 
 This project is not affiliated with or endorsed by the Elm project.

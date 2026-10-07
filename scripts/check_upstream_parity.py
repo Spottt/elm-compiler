@@ -50,6 +50,10 @@ with tempfile.TemporaryDirectory(prefix='elm-rust-upstream-parity-') as director
         source.write_bytes(f'module {module} exposing (..)\n'.encode()+fixture.read_bytes())
         reference=subprocess.run([str(elm),'make',source.name,'--output=/dev/null','--report=json'],cwd=root,text=True,capture_output=True,timeout=30,env=environment)
         if reference.returncode not in (0,1):
+            if os.environ.get('ELM_REFERENCE_RELEASE'):
+                # Known for 0.19.3: a segmentation fault on cyclic values. Nothing to compare with.
+                print(f'SKIPPED, the reference compiler crashed: {relative}', flush=True)
+                continue
             raise SystemExit(f'Reference failed unexpectedly: {relative}\n{reference.stderr}')
         titles=[]
         if reference.returncode:

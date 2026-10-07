@@ -168,8 +168,9 @@ REPL outside a project follows 0.19.1:
   numbers are read on 21 bits (22 for the patch) instead of wrapping at 16.
 
 The 0.19.3 behaviour was checked by replaying the differential checks against
-the 0.19.3 binary; the checks of package commands (`install`, `diff`, `bump`,
-`publish`) and of the REPL have not been ported to it yet.
+the 0.19.3 binary (`scripts/check_compatibility.py --release 0.19.3`); the
+checks of package commands that manage the package cache (`install`, `diff`,
+`publish`) have not been ported to it yet.
 
 Implemented: `init`, `install`, `make` (JavaScript/HTML output, several entry
 points, `--optimize`, `--debug`, `--docs`, `--report=json`), `repl`, `reactor`,

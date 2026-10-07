@@ -82,6 +82,9 @@ with tempfile.TemporaryDirectory(prefix='elm-rust-inference-parity-') as directo
         native = subprocess.run([str(binary),'check',str(root/'elm.json'),source.name],capture_output=True,text=True,timeout=30)
         reference = subprocess.run([str(elm),'make',source.name,'--output=/dev/null','--report=json'],cwd=root,capture_output=True,text=True,timeout=30,env={**os.environ,'GHCRTS':'-N1 -A16m -c'})
         titles=[]
+        if reference.returncode not in (0,1) and os.environ.get('ELM_REFERENCE_RELEASE'):
+            print(f'SKIPPED, the reference compiler crashed: {body!r}', flush=True)
+            continue
         if reference.returncode:
             try: report=json.loads(reference.stderr)
             except ValueError: raise SystemExit(reference.stderr)

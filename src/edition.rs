@@ -111,6 +111,27 @@ pub(crate) fn largest_major() -> u32 {
     if active() >= Version([0, 19, 3]) { 0x1f_ffff } else { u32::from(u16::MAX) }
 }
 
+/// Elm 0.19.3 ignores a `@docs` marker that ends the module comment.
+pub(crate) fn docs_marker_needs_follower() -> bool {
+    active() >= Version([0, 19, 3])
+}
+
+/// Order in which exposed definitions are checked for documentation. Elm 0.19.3 keeps
+/// operators in their own map, visited after values and types.
+pub(crate) fn compare_documented(left: &str, right: &str) -> Ordering {
+    let operator = |name: &str| name.chars().next().is_some_and(|c| !c.is_alphanumeric() && c != '_');
+    if length_first_names() {
+        operator(left).cmp(&operator(right)).then_with(|| compare_names(left, right))
+    } else {
+        compare_names(left, right)
+    }
+}
+
+/// Elm 0.19.3 reports a missing annotation under the exposed operator, not its implementation.
+pub(crate) fn names_operator_without_annotation() -> bool {
+    active() >= Version([0, 19, 3])
+}
+
 /// Elm 0.19.3 creates the missing parent directory of `--docs` output.
 pub fn creates_documentation_directory() -> bool {
     active() >= Version([0, 19, 3])

@@ -183,8 +183,10 @@ pub fn parse_overview(source: &str, comment: DocComment) -> Result<Vec<Documente
     };
     let mut names = Vec::new();
     while cursor.peek().is_some() {
+        // Elm 0.19.3 only recognises the marker when something follows it in the comment.
+        let at_end = !crate::edition::docs_marker_needs_follower();
         if cursor.rest().starts_with("@docs")
-            && cursor.rest()[5..].chars().next().is_none_or(|c| !inner(c))
+            && cursor.rest()[5..].chars().next().map_or(at_end, |c| !inner(c))
         {
             cursor.take("@docs");
             cursor.spaces()?;
@@ -233,6 +235,9 @@ pub fn validate_names<'s>(
         .chain(documented.keys().copied())
         .collect::<BTreeSet<_>>();
     let mut problems = Vec::new();
+    // Problems come out of a map keyed by name, in the name order of the selected release.
+    let mut keys: Vec<_> = keys.into_iter().collect();
+    keys.sort_by(|left, right| crate::edition::compare_names(left, right));
     for name in keys {
         match documented.get(name) {
             Some(spans) if spans.len() > 1 => problems.push(NameProblem::Duplicate {
@@ -318,6 +323,8 @@ pub fn validate(
         .collect::<BTreeMap<_, _>>();
     let mut documented = Vec::new();
     let mut problems = Vec::new();
+    let mut exports: Vec<_> = exports.into_iter().collect();
+    exports.sort_by(|(left, _), (right, _)| crate::edition::compare_documented(left, right));
     for (name, export) in exports {
         let invalid = || Error::InvalidExport(name.into());
         let index = *declarations.get(name).ok_or_else(invalid)?;
@@ -344,8 +351,10 @@ pub fn validate(
             match annotations.get(real_name) {
                 Some(ty) => Some(*ty),
                 None => {
+                    // Elm 0.19.3 names the exposed operator, earlier releases its implementation.
+                    let reported = if crate::edition::names_operator_without_annotation() { name } else { real_name };
                     problems.push(DefinitionProblem::NoAnnotation {
-                        name: real_name.into(),
+                        name: reported.into(),
                     });
                     continue;
                 }

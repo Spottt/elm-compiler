@@ -492,7 +492,10 @@ pub fn definition_report(ast: &Syntax<'_>, error: &Error, path: &std::path::Path
     };
     let export_spans = exports(ast)?;
     let mut comment_spans: BTreeMap<&str, Vec<Span>> = BTreeMap::new();
-    for (name, span) in &export_spans {
+    // Spans are handed out in the order the definitions are checked.
+    let mut ordered_exports: Vec<_> = export_spans.iter().collect();
+    ordered_exports.sort_by(|(left, _), (right, _)| crate::edition::compare_documented(left, right));
+    for (name, span) in ordered_exports {
         let real_name = ast
             .declarations
             .iter()
@@ -513,8 +516,17 @@ pub fn definition_report(ast: &Syntax<'_>, error: &Error, path: &std::path::Path
             DefinitionProblem::NoComment { name } => (name.as_str(), false),
         };
         let span = if annotation {
+            // An operator is reported under its own name but shown at its implementation.
+            let implementation = ast
+                .declarations
+                .iter()
+                .find_map(|d| match d {
+                    Declaration::Infix { operator, function, .. } if *operator == name => Some(*function),
+                    _ => None,
+                })
+                .unwrap_or(name);
             ast.declarations.iter().find_map(|d| match d {
-                Declaration::Value { name: found, .. } if *found == name => {
+                Declaration::Value { name: found, .. } if *found == implementation => {
                     source_span(ast.source, found)
                 }
                 _ => None,

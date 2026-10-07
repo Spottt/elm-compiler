@@ -30,7 +30,7 @@ if (!binary) {
 const bytes = fs.readFileSync(binary);
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'elm-compiler-pack-'));
 try {
-    for (const file of ['package.json', 'resolve.cjs', 'README.md', 'LICENSE', 'NOTICE', 'LICENSE-ELM', 'LICENSE-GHC', 'LICENSE-GLSL', 'LICENSE-FONTS', 'verify.cjs']) {
+    for (const file of ['package.json', 'resolve.cjs', 'README.md', 'LICENSE', 'NOTICE', 'LICENSE-ELM', 'LICENSE-GHC', 'LICENSE-GLSL', 'LICENSE-UNICODE', 'LICENSE-FONTS', 'verify.cjs']) {
         fs.copyFileSync(path.join(root, 'npm', file), path.join(stage, file));
     }
     fs.cpSync(path.join(root, 'npm/bin'), path.join(stage, 'bin'), {recursive: true});

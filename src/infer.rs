@@ -544,7 +544,7 @@ impl<'a, 's> Infer<'a, 's> {
                         let Term::Record { fields, .. } = &*term else {
                             unreachable!()
                         };
-                        fields[name.as_str()]
+                        fields[&crate::edition::FieldName::from(name.as_str())]
                     } else {
                         ty
                     };
@@ -624,7 +624,7 @@ impl<'a, 's> Infer<'a, 's> {
                 {
                     let original = self.reference(id, level)?;
                     let mut ordered: Vec<_> = fields.iter().collect();
-                    ordered.sort_by_key(|(name, _)| *name);
+                    ordered.sort_by(|(left, _), (right, _)| crate::edition::compare_names(left, right));
                     let expected_fields: BTreeMap<_, _> = ordered
                         .iter()
                         .map(|(name, _)| ((*name).into(), self.fresh(level)))
@@ -643,7 +643,7 @@ impl<'a, 's> Infer<'a, 's> {
                         for (name, child) in &ordered {
                             let mut context = crate::annotation_diagnostic::Context::body("");
                             context.update_value = Some((region, name.to_string()));
-                            let expected = expected_fields[*name];
+                            let expected = expected_fields[&crate::edition::FieldName::from(*name)];
                             self.annotation_contexts.insert(*child, (context, expected));
                         }
                         self.call_results.insert(id, record);
@@ -1646,10 +1646,11 @@ impl<'a, 's> Infer<'a, 's> {
         // Canonicalize.Module applies Data.Graph to the direct-dependency
         // subgraph using names as keys. Preserve that order for the diagnostic.
         let mut keys: Vec<_> = (0..component.len()).collect();
-        keys.sort_by_key(|&local| match definitions[component[local]] {
+        let key = |local: usize| match definitions[component[local]] {
             Declaration::Value { name, .. } => *name,
             _ => "",
-        });
+        };
+        keys.sort_by(|&left, &right| crate::edition::compare_names(key(left), key(right)));
         let ranks: BTreeMap<_, _> = keys
             .iter()
             .enumerate()
@@ -1790,10 +1791,11 @@ impl<'a, 's> Infer<'a, 's> {
                 // Top-level canonicalization performs a second SCC traversal;
                 // constraints then visit functions in lexical order. Local lets
                 // retain the DFS order of their single canonicalization pass.
-                component.sort_by_key(|&i| match definitions[i] {
+                let key = |i: usize| match definitions[i] {
                     Declaration::Value { name, .. } => *name,
                     _ => unreachable!(),
-                });
+                };
+                component.sort_by(|&left, &right| crate::edition::compare_names(key(left), key(right)));
                 if !top {
                     component = self.local_recursive_order(&definitions, &owners, &component)?;
                 }

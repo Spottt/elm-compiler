@@ -462,8 +462,8 @@ fn exposed_provider_index_does_not_make_indirect_packages_direct_imports() {
 }
 
 #[test]
-fn applications_pinned_to_elm_0_19_1_or_0_19_2_are_accepted() {
-    // 0.19.2 is a patch release of the same language: projects created with it must build.
+fn applications_pinned_to_elm_0_19_1_to_0_19_3_are_accepted() {
+    // 0.19.2 and 0.19.3 are patch releases of the same language: projects created with them must build.
     let with_version = |version: &str| {
         let f = Fixture::new();
         f.module("Main", "main = ()");
@@ -473,10 +473,10 @@ fn applications_pinned_to_elm_0_19_1_or_0_19_2_are_accepted() {
         fs::write(&path, config.to_string()).unwrap();
         f.graph()
     };
-    for accepted in ["0.19.1", "0.19.2"] {
+    for accepted in ["0.19.1", "0.19.2", "0.19.3"] {
         assert!(with_version(accepted).is_ok(), "{accepted} should be accepted");
     }
-    for rejected in ["0.19.0", "0.19.3", "0.20.0"] {
+    for rejected in ["0.19.0", "0.19.4", "0.20.0"] {
         let error = with_version(rejected).err().unwrap();
         assert!(error.contains("needs a different version of Elm") && error.contains(rejected), "{rejected}: {error}");
     }

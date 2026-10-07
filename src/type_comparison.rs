@@ -298,7 +298,7 @@ fn presentation(nodes: &[Value], root: usize) -> Option<(Value, Vec<usize>)> {
             Some((json!("function"), children))
         }
         "record" => {
-            let mut fields = BTreeMap::new();
+            let mut fields = BTreeMap::<crate::edition::FieldName, _>::new();
             let mut cursor = root;
             let mut seen = BTreeSet::new();
             let extension = loop {
@@ -314,7 +314,7 @@ fn presentation(nodes: &[Value], root: usize) -> Option<(Value, Vec<usize>)> {
                     break Some(cursor);
                 }
                 for (name, value) in row[1].as_object()? {
-                    fields.insert(name, index(value)?);
+                    fields.insert(name.as_str().into(), index(value)?);
                 }
                 if row[2].is_null() {
                     break None;
@@ -326,7 +326,7 @@ fn presentation(nodes: &[Value], root: usize) -> Option<(Value, Vec<usize>)> {
             Some((
                 json!([
                     "record",
-                    fields.keys().collect::<Vec<_>>(),
+                    fields.keys().map(crate::edition::FieldName::as_str).collect::<Vec<_>>(),
                     extension.is_some()
                 ]),
                 children,

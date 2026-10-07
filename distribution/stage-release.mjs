@@ -24,7 +24,7 @@ const binaries = platforms.map(platform => {
     return { platform, filename, bytes, sha256: crypto.createHash('sha256').update(bytes).digest('hex') };
 });
 fs.mkdirSync(output, { recursive: true });
-for (const file of ['package.json','resolve.cjs','README.md','LICENSE','NOTICE','LICENSE-ELM','LICENSE-GHC','LICENSE-GLSL','LICENSE-FONTS','verify.cjs']) fs.copyFileSync(path.join(root,'npm',file),path.join(output,file));
+for (const file of ['package.json','resolve.cjs','README.md','LICENSE','NOTICE','LICENSE-ELM','LICENSE-GHC','LICENSE-GLSL','LICENSE-UNICODE','LICENSE-FONTS','verify.cjs']) fs.copyFileSync(path.join(root,'npm',file),path.join(output,file));
 fs.cpSync(path.join(root,'npm/bin'),path.join(output,'bin'),{recursive:true});
 for (const {platform,filename,bytes} of binaries) {
     const dir = path.join(output,'platforms',platform); fs.mkdirSync(dir,{recursive:true});

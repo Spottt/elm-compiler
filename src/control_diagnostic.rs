@@ -899,7 +899,7 @@ fn expression_start_report(source: &str, name: &str, path: &Path, line: usize, c
     message.push(color("\"hello\"", "yellow"));
     text(&mut message, ". Once there is something\nthere, I can probably give a more specific hint!\n\n".into());
     message.push(json!({"bold":false,"underline":true,"color":null,"string":"Note"}));
-    text(&mut message, reflow("Note: This can also happen if run into reserved words like `let` or `as` unexpectedly. Or if I run into operators in unexpected spots. Point is, there are a couple ways I can get confused and give sort of weird advice!")[4..].to_string());
+    text(&mut message, reflow(if crate::edition::corrected_wording() { "Note: This can also happen if I run into reserved words like `let` or `as` unexpectedly. Or if I run into operators in unexpected spots. Point is, there are a couple ways I can get confused and give sort of weird advice!" } else { "Note: This can also happen if run into reserved words like `let` or `as` unexpectedly. Or if I run into operators in unexpected spots. Point is, there are a couple ways I can get confused and give sort of weird advice!" })[4..].to_string());
     Some(json!({"type":"compile-errors","errors":[{"path":path,"name":name,"problems":[{
         "title":"MISSING EXPRESSION","region":{"start":{"line":line,"column":column},"end":{"line":line,"column":column}},"message":message
     }]}]}))

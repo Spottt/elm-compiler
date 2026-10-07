@@ -50,8 +50,8 @@ pub enum Term {
     Tuple(Vec<Ty>),
     Record {
         // Copies relocate type handles but share immutable field text with
-        // prepared artifacts and checkpoints; ordering remains lexical.
-        fields: BTreeMap<Rc<str>, Ty>,
+        // prepared artifacts and checkpoints; ordering follows the selected release.
+        fields: BTreeMap<crate::edition::FieldName, Ty>,
         extension: Option<Ty>,
     },
 }
@@ -81,7 +81,7 @@ pub struct Scheme {
     pub quantified: BTreeSet<Ty>,
 }
 struct RecordRow<'a> {
-    fields: Cow<'a, BTreeMap<Rc<str>, Ty>>,
+    fields: Cow<'a, BTreeMap<crate::edition::FieldName, Ty>>,
     extension: Option<Ty>,
 }
 /// Reused membership storage for non-nested type-graph traversals. A fresh
@@ -707,7 +707,7 @@ impl Engine {
     // flat case so comparing a large record does not clone its field names.
     fn gather_fields<'a>(
         &mut self,
-        fields: &'a BTreeMap<Rc<str>, Ty>,
+        fields: &'a BTreeMap<crate::edition::FieldName, Ty>,
         mut extension: Option<Ty>,
     ) -> Result<RecordRow<'a>, String> {
         let mut fields = Cow::Borrowed(fields);
@@ -749,9 +749,9 @@ impl Engine {
     }
     fn records(
         &mut self,
-        a: &BTreeMap<Rc<str>, Ty>,
+        a: &BTreeMap<crate::edition::FieldName, Ty>,
         ea: Option<Ty>,
-        b: &BTreeMap<Rc<str>, Ty>,
+        b: &BTreeMap<crate::edition::FieldName, Ty>,
         eb: Option<Ty>,
         pending: &mut Vec<(Ty, Ty)>,
     ) -> Result<(), String> {
@@ -1090,10 +1090,10 @@ mod sparse_compaction_tests {
         let mut engine = Engine::new(Builtins { int: zero, float: zero, string: zero, char: zero, list: zero });
         engine.track_debug_types();
         let vars: Vec<_> = (0..100).map(|i| engine.named_variable(1, Constraint::Any, &format!("item{i}"))).collect();
-        let record = engine.term(Term::Record { fields: vars.iter().enumerate().map(|(i, ty)| (Rc::from(format!("field{i}")), *ty)).collect(), extension: None });
+        let record = engine.term(Term::Record { fields: vars.iter().enumerate().map(|(i, ty)| (format!("field{i}").into(), *ty)).collect(), extension: None });
         let alias = engine.variable(1, Constraint::Any);
         engine.unify(alias, record).unwrap();
-        let dead = engine.term(Term::Record { fields: (0..1000).map(|i| (Rc::from(format!("dead{i}")), vars[0])).collect(), extension: None });
+        let dead = engine.term(Term::Record { fields: (0..1000).map(|i| (format!("dead{i}").into(), vars[0])).collect(), extension: None });
         let view = engine.structure(record).unwrap();
         let before = engine.node_count();
         let mut roots = [record, alias];

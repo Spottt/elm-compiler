@@ -276,7 +276,7 @@ fn version_prefix(
     bytes: &[u8],
     cursor: &mut usize,
 ) -> Result<crate::package_solver::Version, usize> {
-    let mut parts = [0u16; 3];
+    let mut parts = [0u32; 3];
     for (index, part) in parts.iter_mut().enumerate() {
         if index > 0 {
             expect_byte(bytes, cursor, b'.')?;
@@ -287,10 +287,11 @@ fn version_prefix(
             if !bytes.get(*cursor).is_some_and(u8::is_ascii_digit) {
                 return Err(*cursor);
             }
-            while let Some(&digit) = bytes.get(*cursor).filter(|digit| digit.is_ascii_digit()) {
-                *part = part.wrapping_mul(10).wrapping_add(u16::from(digit - b'0'));
+            let start = *cursor;
+            while bytes.get(*cursor).is_some_and(u8::is_ascii_digit) {
                 *cursor += 1;
             }
+            *part = crate::edition::version_component(bytes[start..*cursor].iter().copied(), index);
         }
     }
     Ok(crate::package_solver::Version(parts))
@@ -423,7 +424,7 @@ pub(crate) fn version_constraint(source: &str, path: &[String], title: &str) -> 
             json!("that explicitly states all three numbers!"),
         ])
     } else if let Some((lower, upper)) = range {
-        let next = crate::package_solver::Version([lower.0[0].wrapping_add(1), 0, 0]);
+        let next = lower.next_major();
         let recommendation = styled(&format!("\"{lower} <= v < {next}\""), "GREEN");
         if lower == upper {
             prose_atoms(vec![

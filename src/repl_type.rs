@@ -130,7 +130,9 @@ fn source_names(
                 if !node[2].is_null() {
                     pending.push(index(&node[2])?);
                 }
-                for child in node[1].as_object().ok_or("invalid record fields")?.values() {
+                let mut fields: Vec<_> = node[1].as_object().ok_or("invalid record fields")?.iter().collect();
+                fields.sort_by(|(left, _), (right, _)| crate::edition::compare_names(left, right));
+                for (_, child) in fields {
                     pending.push(index(child)?);
                 }
             }
@@ -309,7 +311,7 @@ impl Renderer<'_> {
                 (Doc::sep(parts).hang(4), if args.is_empty() { 2 } else { 1 })
             }
             "record" => {
-                let mut fields = BTreeMap::new();
+                let mut fields = BTreeMap::<crate::edition::FieldName, _>::new();
                 let mut order = Vec::new();
                 let mut row = id;
                 let mut seen = BTreeSet::new();
@@ -329,7 +331,7 @@ impl Renderer<'_> {
                         order.extend(names.iter().filter_map(Value::as_str).map(str::to_string));
                     }
                     for (name, value) in record[1].as_object().ok_or("invalid record fields")? {
-                        fields.insert(name.clone(), index(value)?);
+                        fields.insert(name.as_str().into(), index(value)?);
                     }
                     if record[2].is_null() {
                         break None;
@@ -338,11 +340,11 @@ impl Renderer<'_> {
                 };
                 let mut ordered = Vec::new();
                 for name in order {
-                    if let Some(id) = fields.remove(&name) {
+                    if let Some(id) = fields.remove(&crate::edition::FieldName::from(name.as_str())) {
                         ordered.push((name, id));
                     }
                 }
-                ordered.extend(fields);
+                ordered.extend(fields.into_iter().map(|(name, id)| (name.as_str().to_owned(), id)));
                 let fields = ordered
                     .into_iter()
                     .enumerate()

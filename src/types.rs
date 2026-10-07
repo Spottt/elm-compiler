@@ -422,7 +422,7 @@ impl Catalog {
                         // Record constructor arguments follow declaration order,
                         // not the sorted field map used by record unification.
                         for (field, _) in fields.iter().rev() {
-                            root = engine.term(Term::Function(types[*field], root));
+                            root = engine.term(Term::Function(types[&crate::edition::FieldName::from(*field)], root));
                         }
                         self.constructors.insert(
                             symbol(symbols, module, name, Space::Constructor)?,

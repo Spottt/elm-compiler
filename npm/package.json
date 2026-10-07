@@ -33,6 +33,7 @@
     "LICENSE-ELM",
     "LICENSE-GHC",
     "LICENSE-GLSL",
+    "LICENSE-UNICODE",
     "LICENSE-FONTS",
     "checksums.json",
     "verify.cjs"

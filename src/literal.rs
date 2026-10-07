@@ -45,6 +45,9 @@ pub(crate) fn canonical_text(raw: &str) -> Result<String, String> {
     let multiline = raw.starts_with("\"\"\"");
     let is_char = raw.starts_with('\'');
     let quote = if multiline { 3 } else { 1 };
+    if is_char && crate::edition::decoded_char_literals() {
+        return decoded_char(&raw[quote..raw.len() - quote]);
+    }
     let mut chars = raw[quote..raw.len() - quote].chars();
     let mut output = String::new();
     while let Some(c) = chars.next() {
@@ -85,6 +88,41 @@ pub(crate) fn canonical_text(raw: &str) -> Result<String, String> {
         }
     }
     Ok(output)
+}
+
+/// Since 0.19.2 a character literal is decoded while parsing and written back as
+/// UTF-8, so every spelling of one character is the same pattern and the same
+/// JavaScript. Lone surrogates were written as invalid UTF-8, which JavaScript
+/// engines read as three replacement characters.
+fn decoded_char(body: &str) -> Result<String, String> {
+    let mut chars = body.chars();
+    let first = chars.next().ok_or("empty character literal")?;
+    let code = if first != '\\' {
+        first as u32
+    } else {
+        match chars.next().ok_or("unfinished escape")? {
+            'n' => 0x0A,
+            'r' => 0x0D,
+            't' => 0x09,
+            'u' => {
+                let hex = chars.as_str().strip_prefix('{').and_then(|rest| rest.strip_suffix('}'));
+                u32::from_str_radix(hex.ok_or("invalid unicode escape")?, 16).map_err(|_| "invalid unicode escape")?
+            }
+            other => other as u32,
+        }
+    };
+    Ok(match code {
+        0x08 => "\\b".into(),
+        0x09 => "\\t".into(),
+        0x0A => "\\n".into(),
+        0x0C => "\\f".into(),
+        0x0D => "\\r".into(),
+        0x27 => "\\'".into(),
+        0x5C => "\\\\".into(),
+        0..0x20 => format!("\\u{code:04x}"),
+        0xD800..=0xDFFF => "\\uFFFD\\uFFFD\\uFFFD".into(),
+        _ => char::from_u32(code).ok_or("invalid unicode escape")?.to_string(),
+    })
 }
 
 /// Parse.Number accumulates decimal and hexadecimal integers in a Haskell Int.

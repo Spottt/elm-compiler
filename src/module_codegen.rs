@@ -143,7 +143,7 @@ pub(crate) fn emit_after_coverage(
                     // Parameter positions follow the alias declaration, but
                     // canonical record properties are emitted in name order.
                     let mut properties: Vec<_> = fields.iter().enumerate().collect();
-                    properties.sort_unstable_by_key(|(_, (name, _))| *name);
+                    properties.sort_unstable_by(|(_, (left, _)), (_, (right, _))| crate::edition::compare_names(left, right));
                     for (position, (i, (name, _))) in properties.into_iter().enumerate() {
                         if position > 0 {
                             expr.push(',');

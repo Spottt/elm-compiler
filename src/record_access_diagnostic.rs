@@ -71,8 +71,8 @@ pub(crate) fn capture(
         } => updates
             .iter()
             .map(|(name, _)| *name)
-            .filter(|name| !fields.contains_key(*name))
-            .min()?,
+            .filter(|name| !fields.contains_key(&crate::edition::FieldName::from(*name)))
+            .min_by(|left, right| crate::edition::compare_names(left, right))?,
         _ => return None,
     };
     let mut ordered: Vec<_> = fields.into_iter().collect();

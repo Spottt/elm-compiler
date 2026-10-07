@@ -115,6 +115,7 @@ impl ImportProblems {
             text(&mut message, format!("\n{}\n\n", reflow("I checked the \"dependencies\" and \"source-directories\" listed in your elm.json, but I cannot find it! Maybe it is a typo for one of these names?")));
             let mut suggestions: Vec<_> = known.iter()
                 .filter(|candidate| !regions.contains_key(candidate.as_str())).collect();
+            suggestions.sort_by(|left, right| crate::edition::compare_names(left, right));
             suggestions.sort_by_key(|candidate| crate::name_diagnostic::distance(name, candidate));
             message.push(style(suggestions.into_iter().take(4).map(|s| format!("    {s}")).collect::<Vec<_>>().join("\n"), Some("yellow"), false));
             text(&mut message, "\n\n".into());

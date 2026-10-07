@@ -4,6 +4,7 @@ pub mod dependency_build;
 pub mod package_progress;
 pub mod make_output;
 pub mod ast;
+pub mod edition;
 pub mod cache;
 pub mod fields;
 pub mod fixity;
@@ -62,6 +63,7 @@ pub mod html;
 pub mod source_error;
 
 mod unicode;
+mod unicode_15_1;
 
 pub mod shader;
 

@@ -24,6 +24,10 @@ distributed with this one:
 * GHC base library — https://www.haskell.org/ghc/
   (c) The University of Glasgow and others. BSD-style. See LICENSE-GHC.
 
+* Unicode Character Database 15.1.0 — https://www.unicode.org/
+  Copyright © 1991-2026 Unicode, Inc. Unicode License V3. See LICENSE-UNICODE.
+  The character tables of Elm 0.19.2 and later are generated from it.
+
 * language-glsl — https://hackage.haskell.org/package/language-glsl
   Copyright (c) Vo Minh Thu, 2010. BSD 3-Clause. See LICENSE-GLSL.
   Test fixtures (tests/upstream/language-glsl-0.3.0) keep their original LICENSE.

@@ -189,7 +189,7 @@ impl Engine {
                                 .as_object()
                                 .ok_or_else(invalid)?
                                 .iter()
-                                .map(|(name, value)| Ok((field_names.entry(name.as_str()).or_insert_with(|| name.as_str().into()).clone(), index(value)?)))
+                                .map(|(name, value)| Ok((field_names.entry(name.as_str()).or_insert_with(|| name.as_str().into()).clone().into(), index(value)?)))
                                 .collect::<Result<_, String>>()?,
                             extension: if parts[2].is_null() {
                                 None

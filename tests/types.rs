@@ -65,7 +65,7 @@ fn catalog_compaction_keeps_alias_parameters_constructors_and_global_schemes() {
     };
     assert_eq!(wrapper.parameters.len(), 1);
     assert_eq!(
-        engine.find(fields["value"]),
+        engine.find(fields[&"value".into()]),
         engine.find(wrapper.parameters[0])
     );
     assert!(engine.structure(wrapper.parameters[0]).is_none());
@@ -164,7 +164,7 @@ fn annotation_variables_share_constraints_and_open_record_extensions() {
     else {
         panic!()
     };
-    assert_eq!(engine.find(fields["value"]), engine.find(result));
+    assert_eq!(engine.find(fields[&"value".into()]), engine.find(result));
     let s = engine.term(Term::Named(builtins.string, vec![]));
     assert!(engine.unify(result, s).is_err());
 }
@@ -195,7 +195,7 @@ fn imported_alias_templates_survive_dropping_their_source() {
         panic!()
     };
     assert!(matches!(
-        &*engine.structure(fields["value"]).unwrap(),
+        &*engine.structure(fields[&"value".into()]).unwrap(),
         Term::Unit
     ));
     assert!(symbols.lookup("pkg:A", "Alias", Space::Type).is_some());

@@ -544,7 +544,7 @@ fn project_pass_with_display(
             };
             for op in used {
                 if origins.get(op).is_some_and(|sources| sources.len() > 1) {
-                    let homes: Vec<String> = origins[op]
+                    let mut homes: Vec<String> = origins[op]
                         .iter()
                         .map(|id| {
                             id.split_once(':')
@@ -552,6 +552,9 @@ fn project_pass_with_display(
                                 .to_owned()
                         })
                         .collect();
+                    if crate::edition::length_first_names() {
+                        homes.sort_by(|left, right| crate::edition::compare_names(left, right));
+                    }
                     let choices: Vec<String> =
                         homes.iter().map(|home| format!("{home}.{op}")).collect();
                     let detail = crate::name_diagnostic::ambiguous(op, "operator", homes, &choices);
@@ -1121,7 +1124,7 @@ fn project_pass_with_display(
         }
     }
     if !documentation_errors.is_empty() {
-        documentation_errors.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
+        crate::edition::sort_module_reports(&mut documentation_errors);
         return Err(crate::docs_diagnostic::encode(&serde_json::json!({
             "type": "compile-errors", "errors": documentation_errors
         })));

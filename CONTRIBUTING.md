@@ -30,9 +30,24 @@ node --test distribution/package.test.mjs
 
 `scripts/` contains differential checks that compare this compiler with the
 official `elm` binary (diagnostics, runtime values, REPL, docs, package
-commands...). The reference is 0.19.1; comparisons with 0.19.2 are welcome.
-They are Python 3 / Node scripts; most take the official binary with
-`--elm /path/to/elm`. Run the ones related to your change.
+commands...). They are Python 3 / Node scripts; most take the official binary
+with `--elm /path/to/elm`. Run the ones related to your change.
+
+Their fixtures are written for Elm 0.19.1. To compare with another release,
+run them through the suite runner, which wraps both compilers so the same
+fixtures are compiled as applications of that release (Linux and macOS):
+
+```sh
+cargo build --release
+python3 scripts/check_compatibility.py --elm /path/to/elm-0.19.3 --release 0.19.3 \
+    --output /tmp/elm-0.19.3 --suite module_errors --suite names_parity
+```
+
+Without `--suite` every registered suite runs. Suites that edit or inspect the
+0.19.1 package cache themselves (`install`, `diff`, `publish`, downloads) or
+drive a terminal cannot be judged this way yet; see
+`scripts/elm_release_adapter.py`. Packages follow Elm 0.19.3, so the suites
+built on package fixtures are expected to differ from the 0.19.1 binary.
 
 CI runs exactly these commands on Linux and macOS (x64 and ARM64) and Windows
 x64 for every pull request. Some tests download Elm packages from `package.elm-lang.org`

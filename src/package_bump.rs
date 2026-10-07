@@ -113,7 +113,7 @@ impl Serialize for PackageOutline<'_> {
 pub fn change_version(manifest: &Path, original: &[u8], target: Version) -> Result<(), String> {
     let destination = manifest.canonicalize().map_err(|e| e.to_string())?;
     let mut outline =
-        crate::outline::decode(std::str::from_utf8(original).map_err(|e| e.to_string())?)?;
+        crate::outline::decode_project(std::str::from_utf8(original).map_err(|e| e.to_string())?)?;
     crate::outline::validate(&outline, manifest.parent().ok_or("manifest has no parent")?)
         .map_err(|e| e.encode())?;
     if outline["type"] != "package" {

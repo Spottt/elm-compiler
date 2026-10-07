@@ -255,7 +255,7 @@ pub fn plan(
         )?;
         updated["dependencies"][package] = json!(format!(
             "{version} <= v < {}.0.0",
-            version.0[0].wrapping_add(1)
+            version.next_major().0[0]
         ));
     }
     let new = dependencies(&updated)?;

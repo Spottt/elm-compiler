@@ -40,9 +40,14 @@ pub fn error(html: bool, missing: &[String], entry_count: usize) -> String {
 
 /// Generation rejects Debug only after all source errors have been checked.
 pub fn debug_remnants(modules: &std::collections::BTreeSet<String>) -> String {
-    let templates: Value = serde_json::from_str(include_str!("make_output_messages.json"))
-        .expect("checked output diagnostic templates");
+    let mut source = std::borrow::Cow::Borrowed(include_str!("make_output_messages.json"));
+    if crate::edition::corrected_debug_remnant_wording() {
+        source = source.replace("generated JavaScript is\\n", "generated JavaScript\\n").into();
+    }
+    let templates: Value = serde_json::from_str(&source).expect("checked output diagnostic templates");
     let mut report = templates["debug-remnants"].clone();
-    report["message"][1]["string"] = json!(modules.iter().cloned().collect::<Vec<_>>().join("\n    "));
+    let mut modules: Vec<_> = modules.iter().cloned().collect();
+    modules.sort_by(|left, right| crate::edition::compare_names(left, right));
+    report["message"][1]["string"] = json!(modules.join("\n    "));
     format!("ELM_DEPENDENCY_JSON:{report}")
 }

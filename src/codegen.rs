@@ -347,7 +347,7 @@ pub fn expression_with_definitions(
                 // Sort source field names, before production field renaming,
                 // so evaluation order and Debug.toString match the official compiler.
                 let mut fields: Vec<_> = fields.iter().collect();
-                fields.sort_unstable_by_key(|(name, _)| *name);
+                fields.sort_unstable_by(|(left, _), (right, _)| crate::edition::compare_names(left, right));
                 if base.is_some() {
                     next.push(text(format!("_Utils_update({},", reference(id)?.name)));
                 }

@@ -46,12 +46,23 @@ def main():
     parser.add_argument('--list', action='store_true', help='List registered suites without executing them')
     parser.add_argument('--suite', action='append', help='Run only this named suite; repeat to select several (default: full audit)')
     parser.add_argument('--elm-hot', type=Path, help='Path to the elm-hot package used by the development environment')
+    parser.add_argument('--release', default='0.19.1', choices=['0.19.1', '0.19.2', '0.19.3'],
+                        help='Official release of --elm. The fixtures target 0.19.1; for another release both '
+                             'compilers are wrapped by elm_release_adapter (see its limits)')
     args = parser.parse_args()
     elm = args.elm.resolve()
     binary = crate/'target/release/planexpo-elm'
     args.output = args.output.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
     scripts = crate/'scripts'
+    working_directory = crate.parent
+    environment = {**os.environ, 'GHCRTS': '-N1 -A16m -c'}
+    if args.release != '0.19.1':
+        import elm_release_adapter
+        scripts, binary, elm = elm_release_adapter.mirror(crate, args.output, elm, binary, args.release)
+        working_directory = scripts.parent.parent
+        # Some releases crash where 0.19.1 reports an error; parity checks then skip that case.
+        environment['ELM_REFERENCE_RELEASE'] = args.release
     suites = []
     for name in ['exposed_groups', 'duplicate_json', 'initialization_order', 'elm_version', 'metadata_cache', 'constraint_parity', 'application_resolution', 'package_resolution', 'application_dependencies', 'package_projects', 'shader_parity', 'shader_runtime', 'unicode_parity', 'output_formats', 'diagnostic_regions', 'header_diagnostics', 'pattern_layout', 'type_layout', 'expression_layout', 'control_layout', 'declaration_layout', 'module_errors', 'name_diagnostics', 'upstream_parity', 'parser_parity', 'names_parity',
                  'inference_parity', 'validation_parity', 'ports_parity',
@@ -146,7 +157,7 @@ def main():
                           for label, name, options in suites], indent=2))
         return
     inputs = hashlib.sha256()
-    for folder in [scripts, crate/'tests']:
+    for folder in [crate/'scripts', crate/'tests']:
         for path in sorted(folder.rglob('*')):
             if path.is_file() and '__pycache__' not in path.parts:
                 inputs.update(str(path.relative_to(crate)).encode())
@@ -168,8 +179,8 @@ def main():
         print('RUN '+label, flush=True)
         with (args.output/(label+'.log')).open('w') as log:
             try:
-                result = subprocess.run(command,cwd=crate.parent,stdout=log,stderr=subprocess.STDOUT,
-                                        env={**os.environ,'GHCRTS':'-N1 -A16m -c'},timeout=1800)
+                result = subprocess.run(command,cwd=working_directory,stdout=log,stderr=subprocess.STDOUT,
+                                        env=environment,timeout=1800)
                 outcome = {'returncode':result.returncode,'passed':result.returncode==0}
             except subprocess.TimeoutExpired:
                 outcome = {'passed':False,'timeout_seconds':1800}

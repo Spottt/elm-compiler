@@ -2,7 +2,7 @@ use planexpo_elm::{
     api_diff::Magnitude, dependency_error, package_publish::Problem, package_solver::Version,
     publish_diagnostic,
 };
-fn v(major: u16, minor: u16, patch: u16) -> Version {
+fn v(major: u32, minor: u32, patch: u32) -> Version {
     Version([major, minor, patch])
 }
 #[test]

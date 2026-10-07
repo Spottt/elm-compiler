@@ -118,7 +118,8 @@ fn approved_update_serializes_parsed_constraints_with_original_bound_inclusivity
     std::fs::write(&path, &original).unwrap();
     change_version(&path, &original, v("1.0.1")).unwrap();
     let result: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
-    assert_eq!(result["elm-version"], "0.19.0 <= v < 0.20.0");
-    assert_eq!(result["dependencies"]["elm/core"], "1.0.0 <= v < 2.0.0");
-    assert_eq!(result["test-dependencies"]["aa/bb"], "1.0.0 < v <= 2.0.0");
+    // Packages follow Elm 0.19.3, whose version components no longer wrap at 16 bits.
+    assert_eq!(result["elm-version"], "65536.19.0 <= v < 65536.20.0");
+    assert_eq!(result["dependencies"]["elm/core"], "65537.0.0 <= v < 65538.0.0");
+    assert_eq!(result["test-dependencies"]["aa/bb"], "65537.0.0 < v <= 65538.0.0");
 }

@@ -78,7 +78,11 @@ with tempfile.TemporaryDirectory(prefix='elm-rust-names-parity-') as directory:
         path=root/f'{module}.elm';path.write_text(source)
         native=subprocess.run([str(binary),'names',str(root/'elm.json'),path.name],capture_output=True,text=True,timeout=30)
         reference=subprocess.run([str(elm),'make',path.name,'--output=/dev/null','--report=json'],cwd=root,capture_output=True,text=True,timeout=30,env={**os.environ,'GHCRTS':'-N1 -A16m -c'})
-        if reference.returncode not in (0,1): raise SystemExit(reference.stderr)
+        if reference.returncode not in (0,1):
+            if os.environ.get('ELM_REFERENCE_RELEASE'):
+                print(f'SKIPPED, the reference compiler crashed: {body!r}', flush=True)
+                continue
+            raise SystemExit(reference.stderr)
         titles=[]
         if reference.returncode:
             try: report=json.loads(reference.stderr)

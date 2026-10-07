@@ -135,7 +135,7 @@ fn compaction_preserves_immutable_views_and_relocates_unified_records() {
         panic!("expected record")
     };
     assert_eq!(
-        fields["value"], integer,
+        fields[&"value".into()], integer,
         "immutable pre-compaction view was modified"
     );
     let shared_name = fields.keys().next().unwrap().clone();
@@ -143,8 +143,8 @@ fn compaction_preserves_immutable_views_and_relocates_unified_records() {
     let Term::Record { fields, .. } = &*relocated else {
         panic!("expected record")
     };
-    assert_eq!(fields["value"], roots[2]);
-    assert!(std::rc::Rc::ptr_eq(&shared_name, fields.keys().next().unwrap()),
+    assert_eq!(fields[&"value".into()], roots[2]);
+    assert!(shared_name.shares_text_with(fields.keys().next().unwrap()),
         "relocating type handles must share immutable field names");
     assert_ne!(integer, roots[2]);
     let text = string(&mut e);

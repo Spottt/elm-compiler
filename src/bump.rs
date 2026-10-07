@@ -57,7 +57,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
     )?;
     let original = fs::read(&manifest).map_err(|e| e.to_string())?;
     let outline =
-        planexpo_elm::outline::decode(std::str::from_utf8(&original).map_err(|e| e.to_string())?)?;
+        planexpo_elm::outline::decode_project(std::str::from_utf8(&original).map_err(|e| e.to_string())?)?;
     planexpo_elm::outline::validate(&outline, manifest.parent().unwrap())
         .map_err(|e| e.encode())?;
     if outline["type"] != "package" {

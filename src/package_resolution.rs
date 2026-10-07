@@ -37,7 +37,7 @@ pub fn resolve_downloads_with(
     network: impl FnOnce() -> Result<PackageNetwork, String>,
 ) -> Result<DownloadResolution, String> {
     let source = fs::read(manifest).map_err(|e| e.to_string())?;
-    let config = crate::outline::decode(std::str::from_utf8(&source).map_err(|e| e.to_string())?)?;
+    let config = crate::outline::decode_project(std::str::from_utf8(&source).map_err(|e| e.to_string())?)?;
     let application = validate_project(&config);
     fs::create_dir_all(home).map_err(|e| e.to_string())?;
     let home = home.canonicalize().map_err(|e| e.to_string())?;

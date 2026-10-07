@@ -668,7 +668,7 @@ fn aggregate_report(
                     }
                     Expr::Record { fields, .. } => {
                         let mut fields: Vec<_> = fields.iter().collect();
-                        fields.sort_by_key(|(name, _)| *name);
+                        fields.sort_by(|(left, _), (right, _)| crate::edition::compare_names(left, right));
                         pending.extend(
                             fields
                                 .into_iter()
@@ -718,10 +718,13 @@ pub(crate) fn ordered_declarations<'a, 's>(
         .iter()
         .filter(|d| matches!(d, Declaration::Value { .. } | Declaration::Destruct { .. }))
         .collect();
-    definitions.sort_by_key(|d| match d {
-        Declaration::Value { name, .. } => *name,
-        _ => "",
-    });
+    fn key<'s>(declaration: &Declaration<'s>) -> &'s str {
+        match declaration {
+            Declaration::Value { name, .. } => name,
+            _ => "",
+        }
+    }
+    definitions.sort_by(|left, right| crate::edition::compare_names(key(left), key(right)));
     let mut owners = BTreeMap::new();
     let mut names = BTreeMap::new();
     for (index, declaration) in definitions.iter().enumerate() {
@@ -890,7 +893,7 @@ fn ordered_destructuring_let<'a, 's>(
             _ => {}
         }
     }
-    nodes.sort_by(|a, b| a.key.cmp(&b.key));
+    nodes.sort_by(|a, b| crate::edition::compare_names(&a.key, &b.key));
     let keys: BTreeMap<_, _> = nodes
         .iter()
         .enumerate()

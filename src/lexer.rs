@@ -139,11 +139,16 @@ impl Cursor<'_> {
                 let start = self.offset;
                 let mut value = -1i64;
                 let mut accumulator = 0i64;
+                // Since 0.19.2 the escape shares the wrapping hexadecimal reader of number literals.
+                let wrapping = crate::edition::wrapping_hexadecimal();
                 while let Some(digit) = self.peek().and_then(|c| c.to_digit(16)) {
                     let next = accumulator.wrapping_mul(16).wrapping_add(digit as i64);
-                    if next < 0 {
+                    if next < 0 && !wrapping {
                         break;
                     }
+                    // 0.19.2 reads the code point without a size limit: once it no longer fits it is
+                    // out of range for good, whatever the following digits are.
+                    let next = if wrapping && (accumulator > 0x10ffff || next < 0) { i64::MAX } else { next };
                     self.advance();
                     value = next;
                     accumulator = next;
@@ -207,8 +212,15 @@ impl Cursor<'_> {
         if zero && self.take("x") {
             let start = self.offset;
             let mut value = 0i64;
+            // Since 0.19.2 every digit is read and the value simply wraps around.
+            let wrapping = crate::edition::wrapping_hexadecimal();
             while let Some(digit) = self.peek().and_then(|c| c.to_digit(16)) {
                 let next = value.wrapping_mul(16).wrapping_add(digit as i64);
+                if wrapping {
+                    value = next;
+                    self.advance();
+                    continue;
+                }
                 if next == -1 {
                     // Haskell's chompHex sentinel also catches an overflow to
                     // -1: retain the previous value and leave this digit unread.
@@ -238,9 +250,13 @@ impl Cursor<'_> {
                 self.advance();
             }
             if start == self.offset {
-                let integer = self.source[number_start..self.offset - 1]
-                    .bytes()
-                    .fold(0i64, |n, digit| n.wrapping_mul(10).wrapping_add((digit - b'0') as i64));
+                let digits = &self.source[number_start..self.offset - 1];
+                // 0.19.1 accumulates in a machine integer; later releases keep the number as written.
+                let integer = if crate::edition::wrapping_hexadecimal() {
+                    digits.to_owned()
+                } else {
+                    digits.bytes().fold(0i64, |n, digit| n.wrapping_mul(10).wrapping_add((digit - b'0') as i64)).to_string()
+                };
                 return Err(format!("{}:{}: number dot {integer}", self.row, self.column - 1));
             }
         }

@@ -66,6 +66,12 @@ pub(crate) fn decoded_char_literals() -> bool {
     active() >= Version([0, 19, 2])
 }
 
+/// Since 0.19.2 numbers are read without a size limit and only narrowed to 64 bits when
+/// emitted: hexadecimal literals of any length are accepted and wrap around.
+pub(crate) fn wrapping_hexadecimal() -> bool {
+    active() >= Version([0, 19, 2])
+}
+
 /// Since 0.19.2 a name clash is reported on the other of its two occurrences.
 pub(crate) fn swapped_duplicate_regions() -> bool {
     active() >= Version([0, 19, 2])

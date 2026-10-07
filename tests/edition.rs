@@ -129,3 +129,11 @@ fn sources_that_are_not_utf8_get_an_encoding_report_since_0_19_2() {
     let syntax = Application::pinned_to("0.19.3").compile(b"value = = () -- caf\xff\n").unwrap_err();
     assert!(!syntax.contains("source is not UTF-8"), "{syntax}");
 }
+
+#[test]
+fn long_hexadecimal_literals_wrap_around_since_0_19_2() {
+    let body = b"value = 0xFFFFFFFFFFFFFFFF\n";
+    assert!(Application::pinned_to("0.19.1").compile(body).is_err());
+    let wrapped = Application::pinned_to("0.19.3").compile(body).unwrap();
+    assert!(wrapped.contains("(-1)"), "{wrapped}");
+}

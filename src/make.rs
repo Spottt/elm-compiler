@@ -546,6 +546,15 @@ fn run_inner(args: Vec<String>, progress_line: &mut ProgressLine, quiet: bool, d
                 .as_ref()
                 .ok_or("missing documentation output path")?;
             let bytes = serde_json::to_vec(&report.documentation).map_err(|e| e.to_string())?;
+            // Elm 0.19.3 writes documentation through the writer that creates missing directories.
+            if planexpo_elm::edition::creates_documentation_directory()
+                && let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty())
+            {
+                fs::create_dir_all(parent).map_err(|error| {
+                    progress_line.0 = false;
+                    crate::diagnostic::output_io_error(parent, "createDirectory", error)
+                })?;
+            }
             fs::write(path, bytes).map_err(|error| {
                 // Unlike bundle output failures, Elm leaves the compilation
                 // progress line untouched when documentation writing fails.

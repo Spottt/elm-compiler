@@ -66,6 +66,11 @@ pub(crate) fn decoded_char_literals() -> bool {
     active() >= Version([0, 19, 2])
 }
 
+/// Elm 0.19.3 creates the missing parent directory of `--docs` output.
+pub fn creates_documentation_directory() -> bool {
+    active() >= Version([0, 19, 3])
+}
+
 /// Since 0.19.2 numbers are read without a size limit and only narrowed to 64 bits when
 /// emitted: hexadecimal literals of any length are accepted and wrap around.
 pub(crate) fn wrapping_hexadecimal() -> bool {

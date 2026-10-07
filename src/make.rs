@@ -337,7 +337,7 @@ fn run_inner(args: Vec<String>, progress_line: &mut ProgressLine, quiet: bool, d
         return Err(clashing_flags());
     }
     let config =
-        planexpo_elm::outline::decode(&fs::read_to_string(&manifest).map_err(|e| e.to_string())?)?;
+        planexpo_elm::outline::decode_project(&fs::read_to_string(&manifest).map_err(|e| e.to_string())?)?;
     planexpo_elm::outline::validate(&config, manifest.parent().unwrap())
         .map_err(|problem| problem.encode())?;
     let document_package = options.entries.is_empty() && options.docs.is_some();

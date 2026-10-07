@@ -459,6 +459,9 @@ fn discover_entries_with_runtime(
     let manifest = snapshot::canonicalize(manifest).map_err(|e| e.to_string())?;
     let root = manifest.parent().ok_or("missing project directory")?;
     let mut manifests = Vec::new();
+    if let Ok(source) = snapshot::read_to_string(&manifest) {
+        crate::edition::select_from_manifest(&source);
+    }
     let config = json(&manifest, &mut manifests)?;
     let (owner, roots, direct, selected, own_exposed) = match config["type"].as_str() {
         Some("application") => {
@@ -524,7 +527,7 @@ fn discover_entries_with_runtime(
             )
         }
         Some("package") => {
-            crate::edition::select(crate::package_solver::Version::ELM);
+            crate::edition::select(crate::edition::PACKAGES);
             let owner = config["name"]
                 .as_str()
                 .filter(|name| crate::package_solver::valid_name(name))

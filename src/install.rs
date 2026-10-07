@@ -47,7 +47,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
     let connection = state.online.then_some(&network);
     let original = fs::read(&path).map_err(|e| e.to_string())?;
     let outline =
-        planexpo_elm::outline::decode(std::str::from_utf8(&original).map_err(|e| e.to_string())?)?;
+        planexpo_elm::outline::decode_project(std::str::from_utf8(&original).map_err(|e| e.to_string())?)?;
     let plan = installation::plan(&home, &outline, package, connection)?;
     match plan.kind {
         PlanKind::AlreadyInstalled => {

@@ -21,6 +21,10 @@ All notable changes are documented here. The format follows
   corrected messages since 0.19.2; the name order of 0.19.3 in generated
   record fields and in error messages. Applications declaring `0.19.1` are
   unchanged. See the Compatibility section of the README.
+- Packages, which only declare a range of Elm versions, now follow the
+  observable behaviour of Elm 0.19.3 instead of 0.19.1. This changes the
+  order of names in their error messages and generated record fields, and
+  version numbers in their `elm.json` no longer wrap around at 65536.
 
 ### Fixed
 

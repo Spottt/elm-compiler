@@ -493,6 +493,13 @@ pub fn decode(source: &str) -> Result<Value, String> {
     decode_named_fields(&crate::outline_json::normalize(source)?)
 }
 
+/// Decodes the manifest of the project being built. It is read like the release it
+/// selects, so that release is selected first; dependency manifests never select one.
+pub fn decode_project(source: &str) -> Result<Value, String> {
+    crate::edition::select_from_manifest(source);
+    decode(source)
+}
+
 pub fn decode_bytes(bytes: &[u8]) -> Result<Value, String> {
     decode(std::str::from_utf8(bytes).map_err(|e| e.to_string())?)
 }

@@ -13,6 +13,22 @@ pub(crate) fn select(version: Version) {
     ACTIVE.with(|active| active.set(version));
 }
 
+/// The release followed by packages, which only declare a range of Elm versions.
+pub(crate) const PACKAGES: Version = Version([0, 19, 3]);
+
+/// Selects the release a project manifest stands for, before the manifest is validated:
+/// the one an application pins, the latest for a package, 0.19.1 for anything invalid.
+pub(crate) fn select_from_manifest(source: &str) {
+    let selected = serde_json::from_str::<serde_json::Value>(source).ok().and_then(|manifest| {
+        if manifest["type"] == "package" {
+            return Some(PACKAGES);
+        }
+        let text = manifest["elm-version"].as_str()?;
+        Version::APPLICATION.into_iter().find(|version| version.to_string() == text)
+    });
+    select(selected.unwrap_or(Version::ELM));
+}
+
 fn active() -> Version {
     ACTIVE.with(Cell::get)
 }
@@ -64,6 +80,35 @@ pub(crate) fn reports_encoding() -> bool {
 /// Since 0.19.2 character literals are decoded by the parser instead of kept as written.
 pub(crate) fn decoded_char_literals() -> bool {
     active() >= Version([0, 19, 2])
+}
+
+/// One component of a version number, read like the selected release does.
+///
+/// 0.19.1 and 0.19.2 accumulate each component in 16 bits. 0.19.3 accumulates in 32 bits
+/// and packs major, minor and patch into 21, 21 and 22 bits of one word.
+pub(crate) fn version_component(digits: impl Iterator<Item = u8>, index: usize) -> u32 {
+    if active() >= Version([0, 19, 3]) {
+        let value = digits.fold(0u32, |total, digit| total.wrapping_mul(10).wrapping_add(u32::from(digit - b'0')));
+        value & if index == 2 { 0x3f_ffff } else { 0x1f_ffff }
+    } else {
+        u32::from(digits.fold(0u16, |total, digit| total.wrapping_mul(10).wrapping_add(u16::from(digit - b'0'))))
+    }
+}
+
+/// A version component plus one, and whether 0.19.3's packed word carries into the next field.
+/// 0.19.1 and 0.19.2 wrap each 16-bit component on its own.
+pub(crate) fn next_version_component(value: u32, index: usize) -> (u32, bool) {
+    if active() >= Version([0, 19, 3]) {
+        let mask = if index == 2 { 0x3f_ffff } else { 0x1f_ffff };
+        ((value + 1) & mask, value == mask)
+    } else {
+        (u32::from((value as u16).wrapping_add(1)), false)
+    }
+}
+
+/// The largest major version of the selected release, used as an open upper bound.
+pub(crate) fn largest_major() -> u32 {
+    if active() >= Version([0, 19, 3]) { 0x1f_ffff } else { u32::from(u16::MAX) }
 }
 
 /// Elm 0.19.3 creates the missing parent directory of `--docs` output.

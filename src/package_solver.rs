@@ -5,12 +5,22 @@ use serde_json::Value;
 use std::{collections::BTreeMap, fs, path::Path};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Version(pub [u16; 3]);
+pub struct Version(pub [u32; 3]);
 impl Version {
     pub const ELM: Self = Self([0, 19, 1]);
     /// Application manifests accepted by this compiler. Elm 0.19.2 and 0.19.3 are patch
     /// releases of the same language, so projects pinned to any of them compile unchanged.
     pub const APPLICATION: [Self; 3] = [Self([0, 19, 1]), Self([0, 19, 2]), Self([0, 19, 3])];
+    /// The first version of the next major, with the overflow of the selected release.
+    pub(crate) fn next_major(self) -> Self {
+        Self([crate::edition::next_version_component(self.0[0], 0).0, 0, 0])
+    }
+    /// The first version of the next minor; in 0.19.3 an overflowing minor carries into the major.
+    pub(crate) fn next_minor(self) -> Self {
+        let (minor, carry) = crate::edition::next_version_component(self.0[1], 1);
+        let major = if carry { crate::edition::next_version_component(self.0[0], 0).0 } else { self.0[0] };
+        Self([major, minor, 0])
+    }
     pub fn parse(text: &str) -> Result<Self, String> {
         let parts = text.split('.').collect::<Vec<_>>();
         if parts.len() != 3
@@ -23,11 +33,8 @@ impl Version {
             return Err(format!("invalid Elm version {text}"));
         }
         let mut result = [0; 3];
-        for (slot, part) in result.iter_mut().zip(parts) {
-            // Elm.Version.chompWord16 accumulates with Word16 arithmetic.
-            *slot = part.bytes().fold(0u16, |total, digit| {
-                total.wrapping_mul(10).wrapping_add(u16::from(digit - b'0'))
-            });
+        for (slot_index, (slot, part)) in result.iter_mut().zip(parts).enumerate() {
+            *slot = crate::edition::version_component(part.bytes(), slot_index);
         }
         Ok(Self(result))
     }
@@ -223,7 +230,7 @@ pub fn add_to_application(
         .collect();
     let anything = Constraint {
         lower: Version([1, 0, 0]),
-        upper: Version([u16::MAX, 0, 0]),
+        upper: Version([crate::edition::largest_major(), 0, 0]),
         lower_inclusive: true,
         upper_inclusive: true,
     };
@@ -250,13 +257,13 @@ pub fn add_to_application(
                     },
                     2 => Constraint {
                         lower: *version,
-                        upper: Version([version.0[0], version.0[1].wrapping_add(1), 0]),
+                        upper: version.next_minor(),
                         lower_inclusive: true,
                         upper_inclusive: false,
                     },
                     3 => Constraint {
                         lower: *version,
-                        upper: Version([version.0[0].wrapping_add(1), 0, 0]),
+                        upper: version.next_major(),
                         lower_inclusive: true,
                         upper_inclusive: false,
                     },

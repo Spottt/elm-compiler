@@ -117,7 +117,7 @@ fn execute(
         "I need the latest list of published packages to make sure this is safe to publish",
     )?;
     let outline =
-        planexpo_elm::outline::decode(&fs::read_to_string(manifest).map_err(|e| e.to_string())?)?;
+        planexpo_elm::outline::decode_project(&fs::read_to_string(manifest).map_err(|e| e.to_string())?)?;
     planexpo_elm::outline::validate(&outline, root).map_err(|e| e.encode())?;
     if outline["type"] == "application" {
         return Err(validation(publication::Problem::Application));

@@ -152,7 +152,8 @@ re-checked against 0.19.2 one by one.
 
 The official binaries differ in a few observable details although the language
 is the same. An application's `elm-version` selects which binary this compiler
-follows (packages and the REPL outside a project follow 0.19.1):
+follows. Packages only declare a range of Elm versions and follow 0.19.3; the
+REPL outside a project follows 0.19.1:
 
 - Since 0.19.2: identifiers use the Unicode 15.1 letter tables; character
   literals are decoded, so `Char.toCode '\u{D800}'` is 65533 instead of `NaN`;
@@ -163,7 +164,8 @@ follows (packages and the REPL outside a project follow 0.19.1):
 - Since 0.19.3: names are ordered by length before content. This changes the
   order of record fields in the generated JavaScript (visible through
   `Debug.toString` and object keys) and the order of names, modules and fields
-  in error messages. `--docs` creates a missing output directory.
+  in error messages. `--docs` creates a missing output directory. Version
+  numbers are read on 21 bits (22 for the patch) instead of wrapping at 16.
 
 The 0.19.3 behaviour was checked by replaying the differential checks against
 the 0.19.3 binary; the checks of package commands (`install`, `diff`, `bump`,

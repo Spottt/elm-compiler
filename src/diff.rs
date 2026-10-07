@@ -109,7 +109,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
     let config = if explicit.is_none() {
         let path = manifest.as_ref().ok_or_else(diff_diagnostic::no_outline)?;
         let value =
-            planexpo_elm::outline::decode(&fs::read_to_string(path).map_err(|e| e.to_string())?)?;
+            planexpo_elm::outline::decode_project(&fs::read_to_string(path).map_err(|e| e.to_string())?)?;
         planexpo_elm::outline::validate(&value, path.parent().unwrap()).map_err(|e| e.encode())?;
         if value["type"] != "package" {
             return Err(diff_diagnostic::application());

@@ -233,8 +233,9 @@ fn put_version(out: &mut Vec<u8>, Version([a, b, c]): Version) {
         out.extend_from_slice(&[a as u8, b as u8, c as u8]);
     } else {
         out.push(255);
+        // The registry format keeps 16 bits per component in every release.
         for part in [a, b, c] {
-            out.extend_from_slice(&part.to_be_bytes());
+            out.extend_from_slice(&(part as u16).to_be_bytes());
         }
     }
 }
@@ -272,13 +273,13 @@ impl<'a> Input<'a> {
         if major == 255 {
             let bytes = self.take(6)?;
             Ok(Version([
-                u16::from_be_bytes([bytes[0], bytes[1]]),
-                u16::from_be_bytes([bytes[2], bytes[3]]),
-                u16::from_be_bytes([bytes[4], bytes[5]]),
+                u16::from_be_bytes([bytes[0], bytes[1]]).into(),
+                u16::from_be_bytes([bytes[2], bytes[3]]).into(),
+                u16::from_be_bytes([bytes[4], bytes[5]]).into(),
             ]))
         } else {
             let rest = self.take(2)?;
-            Ok(Version([major as u16, rest[0] as u16, rest[1] as u16]))
+            Ok(Version([major.into(), rest[0].into(), rest[1].into()]))
         }
     }
 }

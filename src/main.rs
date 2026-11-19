@@ -94,10 +94,7 @@ fn run() -> Result<(), String> {
         if args.next().is_some() {
             return Err("unexpected graph argument".into());
         }
-        let home = env::var_os("ELM_HOME")
-            .map(std::path::PathBuf::from)
-            .or_else(|| env::var_os("HOME").map(|p| std::path::PathBuf::from(p).join(".elm")))
-            .ok_or("ELM_HOME or HOME is required")?;
+        let home = planexpo_elm::elm_home::elm_home()?;
         let start = Instant::now();
         let graph = planexpo_elm::project::discover(
             std::path::Path::new(&manifest),

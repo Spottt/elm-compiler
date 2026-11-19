@@ -6,9 +6,8 @@ use planexpo_elm::{
 use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
-    env, fs,
+    fs,
     io::{self, IsTerminal, Write},
-    path::PathBuf,
 };
 
 const QUESTION: &str = "Hello! Elm projects always start with an elm.json file. I can create them!\n\nNow you may be wondering, what will be in this file? How do I add Elm files to\nmy project? How do I see it in the browser? How will my code grow? Do I need\nmore directories? What about tests? Etc.\n\nCheck out <https://elm-lang.org/0.19.1/init> for all the answers!\n\nKnowing all that, would you like me to create an elm.json file now? [Y/n]: ";
@@ -65,10 +64,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
             _ => print!("Must type 'y' for yes or 'n' for no: "),
         }
     }
-    let home = env::var_os("ELM_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|p| PathBuf::from(p).join(".elm")))
-        .ok_or("ELM_HOME or HOME is required")?;
+    let home = planexpo_elm::elm_home::elm_home()?;
     let network = PackageNetwork::new(PACKAGE_SERVER)?;
     let state = network.registry(&home)?;
     let defaults = json!({"elm/core":"1.0.0 <= v <= 65535.0.0","elm/browser":"1.0.0 <= v <= 65535.0.0","elm/html":"1.0.0 <= v <= 65535.0.0"});

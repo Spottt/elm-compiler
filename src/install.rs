@@ -6,7 +6,6 @@ use planexpo_elm::{
 use std::{
     env, fs,
     io::{self, Write},
-    path::PathBuf,
 };
 
 fn report(title: &str, message: &str) -> String {
@@ -38,10 +37,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
     let root = cwd.ancestors().find(|p| p.join("elm.json").is_file()).ok_or_else(|| report("NEW PROJECT?", "Are you trying to start a new project? Try this command instead:\n\n    elm init\n\nIt will help you get started!"))?;
     let package = args.first().ok_or_else(|| report("INSTALL WHAT?", "I am expecting commands like:\n\n    elm install elm/http\n    elm install elm/json\n    elm install elm/random"))?;
     let path = root.join("elm.json");
-    let home = env::var_os("ELM_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|p| PathBuf::from(p).join(".elm")))
-        .ok_or("ELM_HOME or HOME is required")?;
+    let home = planexpo_elm::elm_home::elm_home()?;
     let network = PackageNetwork::new(PACKAGE_SERVER)?;
     let state = network.registry(&home)?;
     let connection = state.online.then_some(&network);

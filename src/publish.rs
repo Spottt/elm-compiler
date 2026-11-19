@@ -9,7 +9,7 @@ use planexpo_elm::{
 use std::{
     env, fs,
     io::{self, IsTerminal, Write},
-    path::{Path, PathBuf},
+    path::Path,
 };
 fn styled(code: u8, text: &str, terminal: bool) -> String {
     if terminal {
@@ -94,10 +94,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
         .map(|p| p.join("elm.json"))
         .find(|p| p.is_file())
         .ok_or_else(diagnostic::no_outline)?;
-    let home = env::var_os("ELM_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|p| PathBuf::from(p).join(".elm")))
-        .ok_or("ELM_HOME or HOME is required")?;
+    let home = planexpo_elm::elm_home::elm_home()?;
     execute(
         &manifest,
         &home,

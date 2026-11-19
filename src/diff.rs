@@ -3,7 +3,7 @@ use planexpo_elm::{
     package_network::{PACKAGE_SERVER, PackageNetwork},
     package_solver::{Version, valid_name},
 };
-use std::{env, fs, io::IsTerminal, path::PathBuf};
+use std::{env, fs, io::IsTerminal};
 fn styled(code: u8, text: &str) -> String {
     if std::io::stderr().is_terminal() {
         format!("\x1b[{code}m{text}\x1b[0m")
@@ -46,15 +46,9 @@ fn version_examples(arg: &str) -> Vec<String> {
         vec!["1.0.0".into(), "2.0.3".into()]
     }
 }
-fn home() -> Result<PathBuf, String> {
-    env::var_os("ELM_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|p| PathBuf::from(p).join(".elm")))
-        .ok_or("ELM_HOME or HOME is required".into())
-}
 pub(crate) fn argument_error(arg: &str, package: bool) -> Result<String, String> {
     let examples = if package {
-        let home = home()?;
+        let home = planexpo_elm::elm_home::elm_home()?;
         fs::create_dir_all(home.join("0.19.1/packages")).map_err(|e| e.to_string())?;
         match planexpo_elm::registry::Registry::read_cached(&home)? {
             Some(registry) => registry.argument_examples(arg),
@@ -103,7 +97,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
         .ancestors()
         .map(|p| p.join("elm.json"))
         .find(|p| p.is_file());
-    let home = home()?;
+    let home = planexpo_elm::elm_home::elm_home()?;
     let network = PackageNetwork::new(PACKAGE_SERVER)?;
     let registry = network.latest_registry(&home)?;
     let config = if explicit.is_none() {

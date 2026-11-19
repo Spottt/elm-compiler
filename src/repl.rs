@@ -51,10 +51,7 @@ pub fn run(args: Vec<String>) -> Result<(), String> {
             manifest
         }
     };
-    let home = env::var_os("ELM_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|p| PathBuf::from(p).join(".elm")))
-        .ok_or("ELM_HOME or HOME is required")?;
+    let home = planexpo_elm::elm_home::elm_home()?;
     let mut history = crate::repl_history::History::load(&home)?;
     #[cfg(unix)]
     let evaluation =

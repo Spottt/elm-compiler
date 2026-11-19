@@ -346,10 +346,7 @@ fn run_inner(args: Vec<String>, progress_line: &mut ProgressLine, quiet: bool, d
         options.output = PathBuf::from("/dev/null");
         options.explicit_output = true;
     }
-    let home = env::var_os("ELM_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|p| PathBuf::from(p).join(".elm")))
-        .ok_or("ELM_HOME or HOME is required")?;
+    let home = planexpo_elm::elm_home::elm_home()?;
     let downloaded = Rc::new(Cell::new(false));
     let _downloads = if options.json {
         None

@@ -5,6 +5,7 @@ pub mod package_progress;
 pub mod make_output;
 pub mod ast;
 pub mod edition;
+pub mod elm_home;
 pub mod cache;
 pub mod fields;
 pub mod fixity;

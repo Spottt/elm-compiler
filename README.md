@@ -102,7 +102,7 @@ Environment variables:
 
 | Variable                   | Effect |
 | -------------------------- | ------ |
-| `ELM_HOME`                 | Package cache location, as with official Elm (default `~/.elm`). |
+| `ELM_HOME`                 | Package cache location, as with official Elm (default `~/.elm`, `%APPDATA%\elm` on Windows). |
 | `PLANEXPO_ELM_RUST_BINARY` | Absolute path of a binary the npm launcher runs instead of the bundled one (e.g. your own build). |
 
 Missing packages are downloaded from `package.elm-lang.org` into `ELM_HOME`

@@ -4,6 +4,17 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- On Windows, when `ELM_HOME` is unset, the package cache defaults to
+  `%APPDATA%\elm`, like official Elm, instead of requiring `HOME`. Commands
+  run from PowerShell or cmd no longer fail with `ELM_HOME or HOME is
+  required`. From Git Bash, where `HOME` is set, the cache moves from
+  `%USERPROFILE%\.elm` to `%APPDATA%\elm`; set `ELM_HOME` to keep the old
+  location.
+
 ## [0.3.0-alpha.8] - 2026-10-07
 
 ### Added

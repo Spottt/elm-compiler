@@ -14,6 +14,13 @@ All notable changes are documented here. The format follows
   an immediately-invoked function. They ran 2.5 to 5 times slower than
   official Elm's development output on compute-heavy code, which slowed
   `elm-test` runs down (#7).
+- Comparisons with a literal operand (`n > 10`, `x == 0`, `s == "a"`,
+  `flag == True`) compile to direct JavaScript operators in every mode, as
+  official Elm does, instead of `_Utils_eq` / `_Utils_cmp` calls. Code full
+  of such comparisons ran up to 1.65 times slower than official Elm's with
+  `--optimize` (#7). As a result, comparisons of `NaN` with a literal now
+  give official Elm's answers: `nan == 0` is `True`, `nan > 1` and
+  `nan >= 1` are `False`.
 
 ## [0.3.0-alpha.9] - 2026-11-20
 

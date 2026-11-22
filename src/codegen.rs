@@ -62,6 +62,7 @@ fn binary_tasks(
     function: &Reference,
     left: ExprId,
     right: ExprId,
+    mode: Mode,
     reference: &mut impl FnMut(ExprId) -> Result<Reference, String>,
 ) -> Option<Vec<Task>> {
     if let Some(operator) = function.direct_binary() {
@@ -145,6 +146,9 @@ fn binary_tasks(
         return Some(tasks);
     }
 
+    if let Some(tasks) = literal_comparison(ast, &function.name, left, right, mode, reference) {
+        return Some(tasks);
+    }
     let (prefix, middle, suffix) = match function.name.as_str() {
         "$elm$core$Basics$idiv" => ("((", ")/(", ")|0)"),
         "$elm$core$Basics$eq" => ("_Utils_eq(", ",", ")"),
@@ -164,6 +168,104 @@ fn binary_tasks(
         Task::Expr(right),
         text(suffix),
     ])
+}
+/// What Elm's JavaScript generator treats as a literal operand.
+#[derive(Clone, Copy, PartialEq)]
+enum Operand {
+    Zero,
+    Bool(bool),
+    Literal,
+    Other,
+}
+fn operand(
+    ast: &Syntax<'_>,
+    id: ExprId,
+    mode: Mode,
+    reference: &mut impl FnMut(ExprId) -> Result<Reference, String>,
+) -> Operand {
+    use crate::lexer::Kind;
+    match &ast.expressions[id.0 as usize].kind {
+        Expr::Literal(Kind::Number, raw) => {
+            let digits = raw.strip_prefix("0x");
+            let integer = digits.is_some() || !raw.contains(['.', 'e', 'E']);
+            if integer && digits.unwrap_or(raw).bytes().all(|digit| digit == b'0') {
+                Operand::Zero
+            } else {
+                Operand::Literal
+            }
+        }
+        Expr::Literal(Kind::String, _) => Operand::Literal,
+        // Development characters are boxed and unit is an object: neither is
+        // a JavaScript literal there.
+        Expr::Literal(Kind::Char, _) if mode == Mode::Production => Operand::Literal,
+        Expr::Unit if mode == Mode::Production => Operand::Zero,
+        Expr::Var(name) if name.ends_with("True") || name.ends_with("False") => {
+            match reference(id).ok().as_ref().map(|r| r.name.as_str()) {
+                Some("true") => Operand::Bool(true),
+                Some("false") => Operand::Bool(false),
+                _ => Operand::Other,
+            }
+        }
+        _ => Operand::Other,
+    }
+}
+/// Comparisons with a literal operand need no structural helper. This follows
+/// `equal`, `notEqual`, `cmp`, `strictEq` and `strictNEq` of Elm's
+/// Generate/JavaScript/Expression.hs (tag 0.19.1), including `!x` for
+/// `x == 0`. The literal that is dropped has no effect to preserve.
+fn literal_comparison(
+    ast: &Syntax<'_>,
+    function: &str,
+    left: ExprId,
+    right: ExprId,
+    mode: Mode,
+    reference: &mut impl FnMut(ExprId) -> Result<Reference, String>,
+) -> Option<Vec<Task>> {
+    let operator = match function {
+        "$elm$core$Basics$eq" => "===",
+        "$elm$core$Basics$neq" => "!==",
+        "$elm$core$Basics$lt" => "<",
+        "$elm$core$Basics$gt" => ">",
+        "$elm$core$Basics$le" => "<=",
+        "$elm$core$Basics$ge" => ">=",
+        _ => return None,
+    };
+    let kinds = (
+        operand(ast, left, mode, reference),
+        operand(ast, right, mode, reference),
+    );
+    if kinds == (Operand::Other, Operand::Other) {
+        return None;
+    }
+    let direct = vec![
+        text("("),
+        Task::Expr(left),
+        text(operator),
+        Task::Expr(right),
+        text(")"),
+    ];
+    let equal = match operator {
+        "===" => true,
+        "!==" => false,
+        _ => return Some(direct),
+    };
+    // The left literal decides first, as in strictEq.
+    let (literal, other) = match kinds {
+        (Operand::Zero | Operand::Bool(_), _) => (kinds.0, right),
+        (_, Operand::Zero | Operand::Bool(_)) => (kinds.1, left),
+        _ => return Some(direct),
+    };
+    // `x == True` and `x /= 0` keep the truth of x; the other forms negate it.
+    let keeps = match literal {
+        Operand::Bool(value) => value == equal,
+        _ => !equal,
+    };
+    let prefix = match (keeps, literal) {
+        (true, Operand::Zero) => "(!!",
+        (true, _) => "(",
+        (false, _) => "(!",
+    };
+    Some(vec![text(prefix), Task::Expr(other), text(")")])
 }
 fn separated(items: &[ExprId], tasks: &mut Vec<Task>) {
     for (index, item) in items.iter().enumerate() {
@@ -237,6 +339,7 @@ pub fn expression_with_definitions(
                     &reference(*function)?,
                     args[0],
                     args[1],
+                    mode,
                     &mut reference,
                 )
             {
@@ -365,7 +468,7 @@ pub fn expression_with_definitions(
                 // Operator resolution supplies the actual global function.
                 let function = reference(id)?;
                 if let Some(tasks) =
-                    binary_tasks(ast, &function, *left, *right, &mut reference)
+                    binary_tasks(ast, &function, *left, *right, mode, &mut reference)
                 {
                     pending.extend(tasks.into_iter().rev());
                     continue;

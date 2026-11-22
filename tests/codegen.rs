@@ -217,3 +217,72 @@ fn record_fields_follow_elm_name_order_before_field_renaming() {
         );
     }
 }
+
+// Follows equal, notEqual and cmp of Elm's Generate/JavaScript/Expression.hs
+// (tag 0.19.1): a literal operand needs no structural helper (issue #7).
+#[test]
+fn comparisons_with_a_literal_operand_are_direct_like_official_elm() {
+    let both = [Mode::Development, Mode::Production];
+    let cases: &[(&str, &[Mode], &str)] = &[
+        ("eq x 0", &both, "(!x)"),
+        ("eq 0 x", &both, "(!x)"),
+        ("eq x 0x00", &both, "(!x)"),
+        ("neq x 0", &both, "(!!x)"),
+        ("eq x 1", &both, "(x===1)"),
+        ("neq 1 x", &both, "(1!==x)"),
+        ("eq x 0.0", &both, "(x===0.0)"),
+        ("eq x \"a\"", &both, "(x==='a')"),
+        ("neq x \"a\"", &both, "(x!=='a')"),
+        ("eq x True", &both, "(x)"),
+        ("eq False x", &both, "(!x)"),
+        ("neq x True", &both, "(!x)"),
+        ("neq False x", &both, "(x)"),
+        ("lt x 1", &both, "(x<1)"),
+        ("gt x 1.5", &both, "(x>1.5)"),
+        ("le \"a\" x", &both, "('a'<=x)"),
+        ("ge 1 x", &both, "(1>=x)"),
+        // Not literals for Elm: negated numbers and two unknown operands.
+        ("eq x (-1)", &both, "_Utils_eq(x,(-1))"),
+        ("lt x (-1)", &both, "(_Utils_cmp(x,(-1))<0)"),
+        ("eq x y", &both, "_Utils_eq(x,y)"),
+        ("ge x y", &both, "(_Utils_cmp(x,y)>-1)"),
+        // Characters are boxed and unit is an object in development.
+        ("eq x 'a'", &[Mode::Production], "(x==='a')"),
+        ("eq x 'a'", &[Mode::Development], "_Utils_eq(x,_Utils_chr('a'))"),
+        ("lt x 'a'", &[Mode::Production], "(x<'a')"),
+        ("lt x 'a'", &[Mode::Development], "(_Utils_cmp(x,_Utils_chr('a'))<0)"),
+        ("eq x ()", &[Mode::Production], "(!x)"),
+        ("eq x ()", &[Mode::Development], "_Utils_eq(x,_Utils_Tuple0)"),
+    ];
+    for (source, modes, expected) in cases {
+        for mode in *modes {
+            let source = format!("value = {source}");
+            let ast = parse(&source).unwrap();
+            let Declaration::Value { body, .. } = ast.declarations[0] else {
+                panic!()
+            };
+            let js = expression(
+                &ast,
+                body,
+                *mode,
+                |id| {
+                    let Expr::Var(name) = &ast.expressions[id.0 as usize].kind else {
+                        panic!()
+                    };
+                    Ok(Reference {
+                        name: match *name {
+                            "x" | "y" => (*name).into(),
+                            "True" => "true".into(),
+                            "False" => "false".into(),
+                            _ => format!("$elm$core$Basics${name}"),
+                        },
+                        kernel: false,
+                    })
+                },
+                |name| Ok(name.into()),
+            )
+            .unwrap();
+            assert_eq!(&js, expected, "{source} in {mode:?}");
+        }
+    }
+}

@@ -129,7 +129,7 @@ def main():
     # Public compiler checks that were previously run only as standalone suites.
     for name in ['production_optimizations', 'ambiguous_name_diagnostics', 'ambiguous_operator_diagnostics',
                  'arity_diagnostics', 'associativity_diagnostics',
-                 'coverage_aggregation', 'cycle_diagnostics', 'debug_flags', 'debug_remnants', 'diagnostic_cache', 'generated_inference', 'generated_integer_runtime', 'generated_patterns', 'proxy_cli_errors', 'output_io_errors', 'docs_io_errors', 'recursive_capture_runtime', 'unicode_literal_runtime', 'outline_missing_fields', 'outline_source_directories', 'outline_package_metadata', 'outline_versions', 'outline_names', 'outline_modules', 'outline_types', 'outline_json', 'outline_depth', 'outline_deep_types',
+                 'coverage_aggregation', 'cycle_diagnostics', 'debug_flags', 'debug_remnants', 'diagnostic_cache', 'generated_inference', 'literal_comparison_runtime', 'generated_integer_runtime', 'generated_patterns', 'proxy_cli_errors', 'output_io_errors', 'docs_io_errors', 'recursive_capture_runtime', 'unicode_literal_runtime', 'outline_missing_fields', 'outline_source_directories', 'outline_package_metadata', 'outline_versions', 'outline_names', 'outline_modules', 'outline_types', 'outline_json', 'outline_depth', 'outline_deep_types',
                  'duplicate_pattern_diagnostics', 'local_cycle_diagnostics',
                  'operator_name_diagnostics', 'package_docs_core_only',
                  'pattern_diagnostics', 'record_pattern_diagnostics',

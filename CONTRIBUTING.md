@@ -49,6 +49,20 @@ drive a terminal cannot be judged this way yet; see
 `scripts/elm_release_adapter.py`. Packages follow Elm 0.19.3, so the suites
 built on package fixtures are expected to differ from the 0.19.1 binary.
 
+Two scripts guard the speed of the generated JavaScript, on the program in
+`tests/programs/runtime-performance`. Run both after any change to code
+generation:
+
+```sh
+python3 scripts/check_generated_shapes.py --elm /path/to/elm
+python3 scripts/check_runtime_performance.py --elm /path/to/elm
+```
+
+The first is deterministic: it counts closures, structural helper calls and
+operators called as functions, and fails when this compiler emits more of them
+than official Elm. The second times both outputs in Node and fails when this
+compiler's is more than 1.25× slower; it needs a quiet machine.
+
 CI runs exactly these commands on Linux and macOS (x64 and ARM64) and Windows
 x64 for every pull request. Some tests download Elm packages from `package.elm-lang.org`
 and need network access.

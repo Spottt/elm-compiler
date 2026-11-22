@@ -21,6 +21,9 @@ All notable changes are documented here. The format follows
   `--optimize` (#7). As a result, comparisons of `NaN` with a literal now
   give official Elm's answers: `nan == 0` is `True`, `nan > 1` and
   `nan >= 1` are `False`.
+- Record alias constructors are a single `F<n>` function instead of nested
+  one-argument closures, in every mode, so `A<n>` calls and
+  `Json.Decode.map<n>` take the fast path (#7).
 
 ## [0.3.0-alpha.9] - 2026-11-20
 

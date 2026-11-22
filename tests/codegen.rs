@@ -122,7 +122,7 @@ fn emission_does_not_recurse_on_deep_expression_arenas() {
 }
 
 #[test]
-fn production_arithmetic_uses_canonical_identities_and_preserves_numeric_semantics() {
+fn arithmetic_uses_canonical_identities_and_preserves_numeric_semantics_in_every_mode() {
     for (name, operator) in [("add", "+"), ("sub", "-"), ("mul", "*"), ("fdiv", "/")] {
         for binary in [false, true] {
             for mode in [Mode::Development, Mode::Production] {
@@ -159,11 +159,8 @@ fn production_arithmetic_uses_canonical_identities_and_preserves_numeric_semanti
                         |name| Ok(name.into()),
                     )
                     .unwrap();
-                    assert_eq!(
-                        js.contains("A2("),
-                        !(canonical && mode == Mode::Production),
-                        "{js}"
-                    );
+                    // Development builds inline operators too (issue #7).
+                    assert_eq!(js.contains("A2("), !canonical, "{mode:?} {js}");
                     let script = format!(
                         r#"
 function A2(f,a,b){{return f(a)(b);}}

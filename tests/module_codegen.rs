@@ -10,8 +10,12 @@ use std::{
     process::{Command, Stdio},
 };
 #[test]
-fn production_functions_keep_partial_application_captures_and_argument_patterns() {
-    for arity in [2, 3, 9, 10, 100] {
+fn functions_are_shallow_in_every_mode_and_keep_partial_application_captures_and_argument_patterns() {
+    // Development and debug builds get the same shapes as --optimize (issue #7).
+    for (arity, mode) in [2, 3, 9, 10, 100]
+        .into_iter()
+        .flat_map(|arity| [Mode::Development, Mode::Debug, Mode::Production].map(|mode| (arity, mode)))
+    {
         let args = (0..arity)
             .map(|i| format!("a{i}"))
             .collect::<Vec<_>>()
@@ -36,7 +40,7 @@ fn production_functions_keep_partial_application_captures_and_argument_patterns(
             &resolved,
             &symbols,
             &layouts,
-            Mode::Production,
+            mode,
         )
         .unwrap();
         assert_eq!(definitions[0].javascript.matches("function(").count(), 1);
@@ -267,7 +271,7 @@ fn effect_registration_is_deferred_and_implicit_leaves_share_the_manager() {
             3 + usize::from(command) + usize::from(subscription)
         );
         let mut script = String::from(
-            "var _Platform_effectManagers={}; function _Platform_leaf(home){return function(value){return {home:home,value:value};};} function _Platform_createManager(init,onEffects,onSelfMsg,cmdMap,subMap){return {init:init,onEffects:onEffects,onSelfMsg:onSelfMsg,cmdMap:cmdMap,subMap:subMap};}\n",
+            "var _Platform_effectManagers={}; function F2(f){return f;} function F3(f){return f;} function _Platform_leaf(home){return function(value){return {home:home,value:value};};} function _Platform_createManager(init,onEffects,onSelfMsg,cmdMap,subMap){return {init:init,onEffects:onEffects,onSelfMsg:onSelfMsg,cmdMap:cmdMap,subMap:subMap};}\n",
         );
         for definition in &ordered {
             script.push_str(&definition.javascript);
@@ -413,7 +417,12 @@ fn large_record_constructor_is_shallow_and_partial_applications_are_reusable() {
 }
 
 #[test]
-fn production_return_branches_avoid_iifes_and_preserve_selected_closures() {
+fn return_branches_avoid_iifes_in_every_mode_and_preserve_selected_closures() {
+    for mode in [Mode::Development, Mode::Debug, Mode::Production] {
+        return_branches_avoid_iifes(mode);
+    }
+}
+fn return_branches_avoid_iifes(mode: Mode) {
     let source = r#"module Main exposing (..)
 choose condition input =
     if condition then
@@ -447,7 +456,7 @@ choose condition input =
         &resolved,
         &symbols,
         &layouts,
-        Mode::Production,
+        mode,
     )
     .unwrap();
     let js = &definitions[0].javascript;

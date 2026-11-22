@@ -12,12 +12,9 @@ pub struct Reference {
     pub kernel: bool,
 }
 impl Reference {
-    fn direct_binary(&self, mode: Mode) -> Option<&'static str> {
+    fn direct_binary(&self) -> Option<&'static str> {
         if let Some(operator) = self.short_circuit() {
             return Some(operator);
-        }
-        if mode != Mode::Production {
-            return None;
         }
         // These are exactly the JavaScript operations used by Elm's numeric
         // kernel. Integer division, comparison and equality need other rules.
@@ -58,15 +55,16 @@ pub fn flat_function_start(arguments: &[String]) -> String {
     format!("{wrapper}function({}){{", arguments.join(","))
 }
 // Preserve left-to-right evaluation; kernel equality/comparison remain structural.
+// Like Elm's Generate.JavaScript.Expression, operators are inlined in every
+// mode: development builds must not pay a curried call per operator.
 fn binary_tasks(
     ast: &Syntax<'_>,
     function: &Reference,
     left: ExprId,
     right: ExprId,
-    mode: Mode,
     reference: &mut impl FnMut(ExprId) -> Result<Reference, String>,
 ) -> Option<Vec<Task>> {
-    if let Some(operator) = function.direct_binary(mode) {
+    if let Some(operator) = function.direct_binary() {
         return Some(vec![
             text("("),
             Task::Expr(left),
@@ -74,9 +72,6 @@ fn binary_tasks(
             Task::Expr(right),
             text(")"),
         ]);
-    }
-    if mode != Mode::Production {
-        return None;
     }
     if function.name == "$elm$core$Basics$apL" {
         return Some(vec![Task::Apply(left, vec![right])]);
@@ -242,15 +237,13 @@ pub fn expression_with_definitions(
                     &reference(*function)?,
                     args[0],
                     args[1],
-                    mode,
                     &mut reference,
                 )
             {
                 pending.extend(tasks.into_iter().rev());
                 continue;
             }
-            if mode == Mode::Production
-                && args.len() == 1
+            if args.len() == 1
                 && matches!(
                     ast.expressions[function.0 as usize].kind,
                     Expr::Var(_) | Expr::Operator(_)
@@ -372,7 +365,7 @@ pub fn expression_with_definitions(
                 // Operator resolution supplies the actual global function.
                 let function = reference(id)?;
                 if let Some(tasks) =
-                    binary_tasks(ast, &function, *left, *right, mode, &mut reference)
+                    binary_tasks(ast, &function, *left, *right, &mut reference)
                 {
                     pending.extend(tasks.into_iter().rev());
                     continue;
@@ -387,7 +380,7 @@ pub fn expression_with_definitions(
             }
             Expr::Binops(..) => return Err("operators must be resolved before generation".into()),
             Expr::Lambda(arguments, body) => {
-                if mode == Mode::Production && arguments.len() > 1 {
+                if arguments.len() > 1 {
                     let names = (0..arguments.len())
                         .map(|i| format!("$arg{}_{i}", id.0))
                         .collect::<Vec<_>>();
@@ -418,8 +411,7 @@ pub fn expression_with_definitions(
                 // A stable variable needs no evaluation wrapper. Keep larger or
                 // nested decisions in the shared-test tree, and retain wrappers
                 // whenever a branch introduces bindings or the subject can run code.
-                if mode == Mode::Production
-                    && branches.len() <= 3
+                if branches.len() <= 3
                     && matches!(ast.expressions[subject.0 as usize].kind, Expr::Var(_))
                 {
                     let subject_name = reference(*subject)?.name;
@@ -454,14 +446,13 @@ pub fn expression_with_definitions(
                     .iter()
                     .map(|(arg, _)| pattern(*arg, &name))
                     .collect::<Result<Vec<_>, _>>()?;
-                let switch = mode == Mode::Production
-                    && plans.last().is_some_and(|plan| plan.condition == "true");
+                let switch = plans.last().is_some_and(|plan| plan.condition == "true");
                 let labels = if switch {
                     crate::pattern_codegen::switch_labels(&plans)
                 } else {
                     None
                 };
-                if mode == Mode::Production && labels.is_none() {
+                if labels.is_none() {
                     for step in crate::pattern_codegen::decision_steps(&plans) {
                         use crate::pattern_codegen::DecisionStep;
                         match step {

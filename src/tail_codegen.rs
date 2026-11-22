@@ -1,4 +1,4 @@
-//! Return-position statements avoid expression IIFEs in production. Direct self
+//! Return-position statements avoid expression IIFEs in every mode. Direct self
 //! tail calls become loops without changing curried closure capture.
 use crate::{
     ast::{Expr, ExprId, PatternId, Syntax},
@@ -67,7 +67,6 @@ pub fn emit(
     ast: &Syntax<'_>,
     resolved: &Resolved,
     function: Function<'_>,
-    mode: crate::kernel::Mode,
     mut expression: impl FnMut(ExprId) -> Result<String, String>,
     mut pattern: impl FnMut(PatternId, &str) -> Result<Plan, String>,
     mut definitions: impl FnMut(ExprId) -> Result<Vec<codegen::LocalDefinition>, String>,
@@ -76,9 +75,6 @@ pub fn emit(
         return Ok(None);
     }
     let recursive = has_tail_call(ast, resolved, &function);
-    if !recursive && mode != crate::kernel::Mode::Production {
-        return Ok(None);
-    }
     let mut parameters = Vec::new();
     for (i, arg) in function.arguments.iter().enumerate() {
         let name = format!("$tailInput{i}");
@@ -99,7 +95,7 @@ pub fn emit(
         parameters.push(name);
     }
     let mut output = String::new();
-    let flat = mode == crate::kernel::Mode::Production && function.arguments.len() > 1;
+    let flat = function.arguments.len() > 1;
     if flat {
         output.push_str(&codegen::flat_function_start(&parameters));
     } else {
@@ -171,14 +167,13 @@ pub fn emit(
                     .iter()
                     .map(|(arg, _)| pattern(*arg, &name))
                     .collect::<Result<Vec<_>, _>>()?;
-                let switch = mode == crate::kernel::Mode::Production
-                    && plans.last().is_some_and(|plan| plan.condition == "true");
+                let switch = plans.last().is_some_and(|plan| plan.condition == "true");
                 let labels = if switch {
                     crate::pattern_codegen::switch_labels(&plans)
                 } else {
                     None
                 };
-                if mode == crate::kernel::Mode::Production && labels.is_none() {
+                if labels.is_none() {
                     for step in crate::pattern_codegen::decision_steps(&plans) {
                         use crate::pattern_codegen::DecisionStep;
                         match step {

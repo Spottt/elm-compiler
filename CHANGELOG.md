@@ -4,6 +4,17 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- Development and `--debug` builds generate the same fast JavaScript shapes
+  as `--optimize`: `F2`…`F9` wrappers for multi-argument functions and
+  lambdas, inline arithmetic operators, flattened pipes, and `case` without
+  an immediately-invoked function. They ran 2.5 to 5 times slower than
+  official Elm's development output on compute-heavy code, which slowed
+  `elm-test` runs down (#7).
+
 ## [0.3.0-alpha.9] - 2026-11-20
 
 ### Fixed

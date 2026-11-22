@@ -20,7 +20,8 @@ import generated_code_support as support
 
 # Iteration counts keep every test around a tenth of a second with official Elm.
 TESTS = {'cases': 5_000_000, 'records': 5_000_000, 'calls': 2_000_000,
-         'comparisons': 5_000_000, 'dict': 250_000, 'strings': 1_500_000,
+         'comparisons': 5_000_000, 'locals': 3_000_000, 'folds': 1_000_000,
+         'nested': 3_000_000, 'dict': 250_000, 'strings': 1_500_000,
          'decoding': 200_000}
 RUNNER = r'''
 const { Elm } = require(process.argv[1]);

@@ -395,7 +395,6 @@ impl Expressions<'_, '_> {
                 arguments,
                 body,
             },
-            self.mode,
             |root| self.expression(root),
             |id, value| self.pattern(id, value, &mut naming),
             |id| self.definitions(id),
@@ -421,7 +420,7 @@ fn wrap_function(
     naming: &mut Naming<'_>,
 ) -> Result<String, String> {
     let mut result = String::new();
-    if mode == Mode::Production && arguments.len() > 1 {
+    if arguments.len() > 1 {
         let names = (0..arguments.len())
             .map(|i| format!("$toparg{i}"))
             .collect::<Vec<_>>();

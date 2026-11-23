@@ -201,6 +201,98 @@ comparisons i acc =
 
 
 
+-- LOCALS: multi-argument functions defined in a let, called saturated
+
+
+locals : Int -> Int -> Int
+locals i acc =
+    if i == 0 then
+        acc
+
+    else
+        let
+            blend a b c =
+                a * 3 + b - c
+
+            scale a b =
+                a * b + i
+        in
+        locals (i - 1) (modBy modulus (acc + blend i 2 1 + scale i 3 + blend acc 1 i))
+
+
+
+-- FOLDS: a local function given to a core higher-order function
+
+
+folds : Int -> Int
+folds n =
+    let
+        step x sum =
+            modBy modulus (sum + x * 3)
+
+        keep x kept =
+            if modBy 3 x == 0 then
+                kept + 1
+
+            else
+                kept
+    in
+    List.foldl step 0 (List.range 1 n) + List.foldl keep 0 (List.range 1 n)
+
+
+
+-- NESTED: let and case used as expressions, not in return position
+
+
+weigh : Int -> Int
+weigh n =
+    n + 1
+
+
+nested : Int -> Int -> Int
+nested i acc =
+    if i == 0 then
+        acc
+
+    else
+        let
+            total =
+                acc
+                    + (let
+                        doubled =
+                            i * 2
+                       in
+                       doubled + 1
+                      )
+                    + (case modBy 3 i of
+                        0 ->
+                            1
+
+                        1 ->
+                            i
+
+                        _ ->
+                            2
+                      )
+                    + weigh
+                        (case shapeOf i of
+                            Circle r ->
+                                r
+
+                            Square w ->
+                                w + 1
+
+                            Rect w h ->
+                                w + h
+
+                            Tri a b c ->
+                                a + b + c
+                        )
+        in
+        nested (i - 1) (modBy modulus total)
+
+
+
 -- DICT: elm/core code compiled by the compiler under test
 
 
@@ -276,6 +368,15 @@ run flags =
 
         "comparisons" ->
             comparisons flags.n 0
+
+        "locals" ->
+            locals flags.n 0
+
+        "folds" ->
+            folds flags.n
+
+        "nested" ->
+            nested flags.n 0
 
         "dict" ->
             dict flags.n

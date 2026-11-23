@@ -60,7 +60,8 @@ python3 scripts/check_runtime_performance.py --elm /path/to/elm
 
 The first is deterministic: it counts closures, structural helper calls and
 operators called as functions, and fails when this compiler emits more of them
-than official Elm. The second times both outputs in Node and fails when this
+than official Elm; it is part of the `check_compatibility.py` suites. The
+second times both outputs in Node and fails when this
 compiler's is more than 1.25× slower; it needs a quiet machine.
 
 CI runs exactly these commands on Linux and macOS (x64 and ARM64) and Windows

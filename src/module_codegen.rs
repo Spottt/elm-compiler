@@ -124,20 +124,18 @@ pub(crate) fn emit_after_coverage(
                     let id = symbols
                         .lookup(module, name, Space::Constructor)
                         .ok_or("missing record constructor")?;
-                    let mut expr = String::new();
-                    if fields.len() > 9 {
-                        let args = (0..fields.len())
-                            .map(|i| format!("$r{i}"))
-                            .collect::<Vec<_>>()
-                            .join(",");
-                        expr.push_str(&format!(
-                            "_Rust_curry({},function({args}){{return ",
-                            fields.len()
-                        ));
-                    } else {
-                        for i in 0..fields.len() {
-                            expr.push_str(&format!("(function($r{i}){{return "));
-                        }
+                    // One shallow function, as Elm's F<n> record constructors:
+                    // A<n> calls and Json.Decode.map<n> then take the fast path.
+                    let parameters = (0..fields.len())
+                        .map(|i| format!("$r{i}"))
+                        .collect::<Vec<_>>();
+                    let mut expr = match parameters.as_slice() {
+                        [] => String::new(),
+                        [only] => format!("(function({only}){{"),
+                        _ => codegen::flat_function_start(&parameters),
+                    };
+                    if !fields.is_empty() {
+                        expr.push_str("return ");
                     }
                     expr.push_str("({");
                     // Parameter positions follow the alias declaration, but
@@ -154,12 +152,8 @@ pub(crate) fn emit_after_coverage(
                         ));
                     }
                     expr.push_str("})");
-                    if fields.len() > 9 {
+                    if !fields.is_empty() {
                         expr.push_str(";})");
-                    } else {
-                        for _ in fields {
-                            expr.push_str(";})");
-                        }
                     }
                     add(id, expr, BTreeSet::new(), !fields.is_empty())?;
                 }

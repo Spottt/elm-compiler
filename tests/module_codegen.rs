@@ -366,6 +366,63 @@ fn recursive_values_preserve_deferred_references_and_cached_identity() {
 }
 
 #[test]
+fn record_constructors_are_one_function_whatever_the_arity_and_mode() {
+    for (arity, mode) in [1, 2, 5, 9, 10]
+        .into_iter()
+        .flat_map(|arity| [Mode::Development, Mode::Debug, Mode::Production].map(|mode| (arity, mode)))
+    {
+        // Declared in reverse name order: positions follow the declaration.
+        let fields = (0..arity)
+            .rev()
+            .map(|i| format!("f{i}:()"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let source = format!("module Main exposing (..)\ntype alias Item = {{ {fields} }}");
+        let ast = parse(&source).unwrap();
+        let mut symbols = Symbols::default();
+        let (_, resolved) = names::resolve(
+            &ast,
+            "application:Main",
+            Environment::default(),
+            &mut symbols,
+        )
+        .unwrap();
+        let definitions = module_codegen::emit(
+            &ast,
+            "application:Main",
+            &resolved,
+            &symbols,
+            &Layouts::default(),
+            mode,
+        )
+        .unwrap();
+        let js = &definitions[0].javascript;
+        assert_eq!(js.matches("function(").count(), 1, "{js}");
+        assert_eq!(js.contains(&format!("F{arity}(")), (2..=9).contains(&arity), "{js}");
+        let mut script = planexpo_elm::linker::helpers();
+        script.push_str(js);
+        // Saturated call, one argument at a time, and a reused partial application.
+        script.push_str(&format!(
+            r#"
+var Item=$author$project$Main$Item, n={arity}, args=[];
+for(var i=0;i<n;i++)args.push(i+10);
+var full=n===1?Item(args[0]):[,,A2,A3,A4,A5,A6,A7,A8,A9][n]?[,,A2,A3,A4,A5,A6,A7,A8,A9][n](Item,...args):args.reduce((f,a)=>f(a),Item);
+var curried=args.reduce((f,a)=>f(a),Item);
+for(var i=0;i<n;i++)if(full['f'+(n-1-i)]!==i+10||curried['f'+(n-1-i)]!==i+10)throw Error('field order '+i);
+if(n>1){{var partial=Item(1),a=args.slice(1).reduce((f,x)=>f(x),partial),b=args.slice(1).reduce((f,x)=>f(x+100),partial);
+if(a['f'+(n-1)]!==1||b['f'+(n-1)]!==1||a.f0===b.f0)throw Error('partial reuse');}}
+"#
+        ));
+        let result = Command::new("node").args(["-e", &script]).output().unwrap();
+        assert!(
+            result.status.success(),
+            "{arity} {mode:?} {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+}
+
+#[test]
 fn large_record_constructor_is_shallow_and_partial_applications_are_reusable() {
     let fields = (0..2200)
         .map(|i| format!("f{i}:()"))

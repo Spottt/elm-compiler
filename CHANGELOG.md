@@ -4,6 +4,20 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- Bundles of `Browser` programs no longer contain the time-travelling
+  debugger unless built with `--debug`. Development and `--optimize` bundles
+  carried its kernel and every `Debugger.*` module as dead code: about 140 KB
+  before minification on a small application, more than doubling it.
+- Functions are no longer wrapped in parentheses unless they are called on the
+  spot. V8 compiles `(function(){…})` while parsing, so thousands of functions
+  were compiled at load time instead of on first call. On a 3.5 MB bundle this
+  took the heap after load from 17.1 MB to 15.9 MB without minification
+  (official Elm: 15.6 MB). Minifiers already removed these parentheses.
+
 ## [0.3.0-alpha.10] - 2026-11-23
 
 ### Fixed

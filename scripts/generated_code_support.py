@@ -33,12 +33,12 @@ def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def compile_bundles(compilers, directory):
+def compile_bundles(compilers, directory, program=PROGRAM):
     """Return {mode: {compiler: bundle path}}, each compiler in its own project copy."""
     bundles = {}
     for name in COMPILERS:
         project = Path(directory)/name
-        shutil.copytree(PROGRAM, project, ignore=shutil.ignore_patterns('elm-stuff'))
+        shutil.copytree(program, project, ignore=shutil.ignore_patterns('elm-stuff'))
         for mode, flags in MODES.items():
             bundle = project/f'{mode}.js'
             run = subprocess.run(

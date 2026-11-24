@@ -99,6 +99,12 @@ fn assemble_parts(
         if !module.kernel {
             continue;
         }
+        // Like isDebugger in Elm's Generate/JavaScript.hs: outside --debug the
+        // debugger kernel is left out, and with it the Debugger.* modules that
+        // only it refers to. Browser then finds `_Debugger_element` undefined.
+        if report.mode != kernel::Mode::Debug && module.name.ends_with("Kernel.Debugger") {
+            continue;
+        }
         let content = kernel::parse(&module.source)?;
         let rendered = kernel::render(
             &content,

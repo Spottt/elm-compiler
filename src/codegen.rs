@@ -435,7 +435,7 @@ pub fn expression_with_definitions(
                 )),
             ]),
             Expr::Accessor(name) => next.push(text(format!(
-                "(function($record){{return $record[{}];}})",
+                "function($record){{return $record[{}];}}",
                 serde_json::to_string(&field(name)?).unwrap()
             ))),
             Expr::Record { base, fields } => {
@@ -500,14 +500,16 @@ pub fn expression_with_definitions(
                 for (index, arg) in arguments.iter().enumerate() {
                     let name = format!("$arg{}_{}", id.0, index);
                     let plan = pattern(*arg, &name)?;
+                    // No parentheses around a function that is not called on
+                    // the spot: V8 compiles `(function` eagerly at load time.
                     next.push(text(format!(
-                        "(function({name}){{{}return ",
+                        "function({name}){{{}return ",
                         plan.declarations()
                     )));
                 }
                 next.push(Task::Expr(*body));
                 for _ in arguments {
-                    next.push(text(";})"));
+                    next.push(text(";}"));
                 }
             }
             Expr::Case(subject, branches) => {
@@ -623,13 +625,13 @@ pub fn expression_with_definitions(
                         let argument = format!("$defarg{}_{}_{}", id.0, index, arg_index);
                         let plan = pattern(*arg, &argument)?;
                         next.push(text(format!(
-                            "(function({argument}){{{}return ",
+                            "function({argument}){{{}return ",
                             plan.declarations()
                         )));
                     }
                     next.push(Task::Expr(definition.body));
                     for _ in definition.arguments {
-                        next.push(text(";})"));
+                        next.push(text(";}"));
                     }
                     next.push(text(";"));
                     if let Some(arg) = definition.destructure {

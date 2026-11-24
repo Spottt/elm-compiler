@@ -131,7 +131,7 @@ pub(crate) fn emit_after_coverage(
                         .collect::<Vec<_>>();
                     let mut expr = match parameters.as_slice() {
                         [] => String::new(),
-                        [only] => format!("(function({only}){{"),
+                        [only] => format!("function({only}){{"),
                         _ => codegen::flat_function_start(&parameters),
                     };
                     if !fields.is_empty() {
@@ -152,8 +152,10 @@ pub(crate) fn emit_after_coverage(
                         ));
                     }
                     expr.push_str("})");
-                    if !fields.is_empty() {
-                        expr.push_str(";})");
+                    match fields.len() {
+                        0 => {}
+                        1 => expr.push_str(";}"),
+                        _ => expr.push_str(";})"),
                     }
                     add(id, expr, BTreeSet::new(), !fields.is_empty())?;
                 }
@@ -431,13 +433,13 @@ fn wrap_function(
         let name = format!("$toparg{i}");
         let plan = pattern_codegen::plan(ast, *arg, &name, mode, naming)?;
         result.push_str(&format!(
-            "(function({name}){{{}return ",
+            "function({name}){{{}return ",
             plan.declarations()
         ));
     }
     result.push_str(&body);
     for _ in arguments {
-        result.push_str(";})");
+        result.push_str(";}");
     }
     Ok(result)
 }

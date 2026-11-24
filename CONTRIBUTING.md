@@ -58,6 +58,10 @@ python3 scripts/check_generated_shapes.py --elm /path/to/elm
 python3 scripts/check_runtime_performance.py --elm /path/to/elm
 ```
 
+A third one, `scripts/check_bundle_load.py`, compares what loading the bundle
+costs: its size, dead code such as the debugger, and the functions V8 compiles
+before any call.
+
 The first is deterministic: it counts closures, structural helper calls and
 operators called as functions, and fails when this compiler emits more of them
 than official Elm; it is part of the `check_compatibility.py` suites. The

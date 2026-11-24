@@ -100,7 +100,7 @@ pub fn emit(
         output.push_str(&codegen::flat_function_start(&parameters));
     } else {
         for (i, parameter) in parameters.iter().enumerate() {
-            output.push_str(&format!("(function({parameter}){{"));
+            output.push_str(&format!("function({parameter}){{"));
             if i + 1 < function.arguments.len() {
                 output.push_str("return ");
             }
@@ -238,13 +238,13 @@ pub fn emit(
                     for (i, arg) in definition.arguments.iter().enumerate() {
                         let parameter = format!("$tailDef{}_{}_{}", id.0, index, i);
                         output.push_str(&format!(
-                            "(function({parameter}){{{}return ",
+                            "function({parameter}){{{}return ",
                             pattern(*arg, &parameter)?.declarations()
                         ));
                     }
                     output.push_str(&expression(definition.body)?);
                     for _ in definition.arguments {
-                        output.push_str(";})");
+                        output.push_str(";}");
                     }
                     output.push(';');
                     if let Some(arg) = definition.destructure {
@@ -260,8 +260,12 @@ pub fn emit(
     if recursive {
         output.push('}');
     }
-    for _ in 0..if flat { 1 } else { function.arguments.len() } {
+    if flat {
         output.push_str(";})");
+    } else {
+        for _ in 0..function.arguments.len() {
+            output.push_str(";}");
+        }
     }
     Ok(Some(output))
 }

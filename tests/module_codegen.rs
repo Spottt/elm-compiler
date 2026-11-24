@@ -574,3 +574,46 @@ fn standalone_generation_rejects_missing_and_redundant_cases() {
         }
     }
 }
+
+// V8 compiles `(function` at load time, expecting an immediate call. Only the
+// functions this compiler does call on the spot may be parenthesised.
+#[test]
+fn functions_that_are_not_called_on_the_spot_are_not_parenthesised() {
+    let source = "module Main exposing (..)\ntype alias One = { a : () }\nidentity x = x\nlambda = \\a -> a\naccessor = .a\nnested = \\a -> \\b -> a\nlocal x = let inner y = y in inner x\npick x = case x of\n    () -> \\y -> y\n";
+    for mode in [Mode::Development, Mode::Debug, Mode::Production] {
+        let ast = parse(source).unwrap();
+        let mut symbols = Symbols::default();
+        let (_, resolved) = names::resolve(
+            &ast,
+            "application:Main",
+            Environment::default(),
+            &mut symbols,
+        )
+        .unwrap();
+        let mut layouts = Layouts::default();
+        layouts.register(&ast, "application:Main", &symbols).unwrap();
+        let definitions =
+            module_codegen::emit(&ast, "application:Main", &resolved, &symbols, &layouts, mode)
+                .unwrap();
+        assert_eq!(definitions.len(), 7);
+        let mut script = planexpo_elm::linker::helpers();
+        for definition in &definitions {
+            let js = &definition.javascript;
+            assert!(!js.contains("(function"), "{mode:?} {js}");
+            script.push_str(js);
+        }
+        script.push_str(
+            r#"
+var m='$author$project$Main$', g=n=>eval(m+n);
+if(g('identity')(7)!==7||g('lambda')(8)!==8||g('accessor')({a:9})!==9)throw Error('single argument');
+if(g('nested')(1)(2)!==1||g('local')(3)!==3||g('pick')(0)(4)!==4||g('One')(5).a!==5)throw Error('nested');
+"#,
+        );
+        let result = Command::new("node").args(["-e", &script]).output().unwrap();
+        assert!(
+            result.status.success(),
+            "{mode:?} {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+}
